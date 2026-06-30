@@ -1,0 +1,33 @@
+{
+  "name": "orderflow",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @orderflow/api db:generate",
+    "db:migrate:dev": "pnpm --filter @orderflow/api db:migrate:dev",
+    "db:migrate": "pnpm --filter @orderflow/api db:migrate",
+    "db:studio": "pnpm --filter @orderflow/api db:studio",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "turbo": "2.10.1",
+    "typescript": "5.8.3"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

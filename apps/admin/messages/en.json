@@ -1,0 +1,9 @@
+{
+  "Home": {
+    "application": "Administration portal",
+    "title": "OrderFlow foundation is ready",
+    "description": "Administration for products, inventory, orders and Dynamic RBAC.",
+    "sprint": "Sprint 0: monorepo, infrastructure, HeroUI, i18n and API health check.",
+    "action": "Start development"
+  }
+}

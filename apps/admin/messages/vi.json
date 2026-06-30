@@ -1,0 +1,9 @@
+{
+  "Home": {
+    "application": "Cổng quản trị",
+    "title": "Nền tảng OrderFlow đã sẵn sàng",
+    "description": "Ứng dụng quản trị sản phẩm, tồn kho, đơn hàng và Dynamic RBAC.",
+    "sprint": "Sprint 0: monorepo, hạ tầng, HeroUI, i18n và API health check.",
+    "action": "Bắt đầu phát triển"
+  }
+}

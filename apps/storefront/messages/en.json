@@ -1,0 +1,9 @@
+{
+  "Home": {
+    "application": "Customer storefront",
+    "title": "OrderFlow foundation is ready",
+    "description": "Customer shopping application for the flash-sale platform.",
+    "sprint": "Sprint 0: monorepo, infrastructure, HeroUI, i18n and API health check.",
+    "action": "Start development"
+  }
+}

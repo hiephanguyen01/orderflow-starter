@@ -1,0 +1,38 @@
+{
+  "name": "@orderflow/storefront",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heroui/react": "3.2.1",
+    "@heroui/styles": "3.2.1",
+    "@orderflow/api-client": "workspace:*",
+    "@orderflow/shared-types": "workspace:*",
+    "@orderflow/ui": "workspace:*",
+    "@tanstack/react-query": "5.101.2",
+    "axios": "1.18.1",
+    "next": "16.2.9",
+    "next-intl": "4.13.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "7.80.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@orderflow/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "24.0.0",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "eslint": "9.29.0",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "4.3.2",
+    "typescript": "5.8.3"
+  }
+}

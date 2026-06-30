@@ -1,0 +1,24 @@
+{
+  "name": "@orderflow/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "1.18.1"
+  },
+  "devDependencies": {
+    "@orderflow/typescript-config": "workspace:*",
+    "@types/node": "24.0.0",
+    "eslint": "9.29.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.34.1"
+  }
+}
