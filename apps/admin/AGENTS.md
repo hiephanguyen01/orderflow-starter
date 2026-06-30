@@ -31,14 +31,14 @@ Role and permission names are runtime database values.
 
 Display:
 
-```tsx
-{role.name}
-{permission.name}
+```text
+role.name
+permission.name
 ```
 
 Do not attempt:
 
-```tsx
+```text
 t(`roles.${role.code}`)
 t(`permissions.${permission.code}`)
 ```
