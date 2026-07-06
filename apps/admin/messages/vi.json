@@ -1,9 +1,38 @@
 {
-  "Home": {
-    "application": "Cổng quản trị",
-    "title": "Nền tảng OrderFlow đã sẵn sàng",
-    "description": "Ứng dụng quản trị sản phẩm, tồn kho, đơn hàng và Dynamic RBAC.",
-    "sprint": "Sprint 0: monorepo, hạ tầng, HeroUI, i18n và API health check.",
-    "action": "Bắt đầu phát triển"
+  "AccessControl": {
+    "roles": {
+      "actions": {
+        "delete": "Xóa",
+        "edit": "Chỉnh sửa"
+      },
+      "columns": {
+        "actions": "Thao tác",
+        "code": "Mã vai trò",
+        "name": "Tên vai trò",
+        "permissions": "Số quyền",
+        "status": "Trạng thái",
+        "users": "Số người dùng"
+      },
+      "create": "Tạo vai trò",
+      "empty": "Chưa có vai trò",
+      "status": {
+        "active": "Đang hoạt động",
+        "inactive": "Ngừng hoạt động"
+      },
+      "tableLabel": "Danh sách vai trò",
+      "title": "Vai trò"
+    },
+    "title": "Quản lý phân quyền"
+  },
+  "Errors": {
+    "ACCOUNT_NOT_ACTIVE": "Tài khoản không hoạt động",
+    "EMAIL_ALREADY_EXISTS": "Email đã tồn tại",
+    "INSUFFICIENT_PERMISSIONS": "Bạn không có quyền thực hiện thao tác này",
+    "INVALID_CREDENTIALS": "Email hoặc mật khẩu không chính xác",
+    "INVALID_SESSION": "Phiên đăng nhập không hợp lệ",
+    "PERMISSION_CODE_ALREADY_EXISTS": "Mã quyền đã tồn tại",
+    "PRIVILEGE_ESCALATION_FORBIDDEN": "Bạn không thể cấp quyền cao hơn quyền hiện tại",
+    "REFRESH_TOKEN_REUSED": "Phát hiện refresh token đã được sử dụng lại",
+    "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại"
   }
 }

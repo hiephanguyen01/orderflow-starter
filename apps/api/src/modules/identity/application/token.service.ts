@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
@@ -10,6 +10,7 @@ type JwtExpiresInString = Extract<JwtExpiresIn, string>;
 const JWT_EXPIRES_IN_PATTERN =
   /^-?\d+(?:\.\d+)?(?:\s?(?:years?|yrs?|y|weeks?|w|days?|d|hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s|milliseconds?|msecs?|ms))?$/i;
 
+@Injectable()
 export class TokenService {
   constructor(
     private readonly jwtService: JwtService,

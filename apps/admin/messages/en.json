@@ -1,9 +1,38 @@
 {
-  "Home": {
-    "application": "Administration portal",
-    "title": "OrderFlow foundation is ready",
-    "description": "Administration for products, inventory, orders and Dynamic RBAC.",
-    "sprint": "Sprint 0: monorepo, infrastructure, HeroUI, i18n and API health check.",
-    "action": "Start development"
+  "AccessControl": {
+    "roles": {
+      "actions": {
+        "delete": "Delete",
+        "edit": "Edit"
+      },
+      "columns": {
+        "actions": "Actions",
+        "code": "Role code",
+        "name": "Role name",
+        "permissions": "Permissions",
+        "status": "Status",
+        "users": "Users"
+      },
+      "create": "Create role",
+      "empty": "No roles found",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "tableLabel": "Role list",
+      "title": "Roles"
+    },
+    "title": "Access control"
+  },
+  "Errors": {
+    "ACCOUNT_NOT_ACTIVE": "Account is not active",
+    "EMAIL_ALREADY_EXISTS": "Email already exists",
+    "INSUFFICIENT_PERMISSIONS": "You do not have permission to perform this action",
+    "INVALID_CREDENTIALS": "Invalid email or password",
+    "INVALID_SESSION": "Invalid login session",
+    "PERMISSION_CODE_ALREADY_EXISTS": "Permission code already exists",
+    "PRIVILEGE_ESCALATION_FORBIDDEN": "You cannot grant a permission higher than your current permission",
+    "REFRESH_TOKEN_REUSED": "Detected refresh token has been reused",
+    "ROLE_CODE_ALREADY_EXISTS": "Role code already exists"
   }
 }
