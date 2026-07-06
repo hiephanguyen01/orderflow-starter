@@ -1,20 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import { Prisma, type PermissionEffect } from '../../../generated/prisma/client.js';
 import { PrismaService } from '../../../database/prisma/prisma.service.js';
-import { CreatePermissionDto } from '../dto/create-permission.dto.js';
-import { CreateRoleDto } from '../dto/create-role.dto.js';
-import { DirectPermissionItemDto } from '../dto/replace-user-permissions.dto.js';
-import { AccessControlPolicyService } from './access-control-policy.service.js';
+import { CreatePermissionDto } from '../presentation/http/dto/create-permission.dto.js';
+import { CreateRoleDto } from '../presentation/http/dto/create-role.dto.js';
+import { DirectPermissionItemDto } from '../presentation/http/dto/replace-user-permissions.dto.js';
+import { AuthorizationPolicyService } from './authorization-policy.service.js';
 import { AuthorizationService } from './authorization.service.js';
-
-const SUPER_ADMIN_PERMISSION = 'system.super-admin';
 
 type PermissionResponse = {
   id: string;
@@ -41,14 +38,148 @@ export class AccessControlService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationService: AuthorizationService,
-    private readonly policyService: AccessControlPolicyService,
+    private readonly policy: AuthorizationPolicyService,
   ) {}
+
+  async listRoles() {
+    return this.prisma.role.findMany({
+      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        isSystem: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            users: true,
+            permissions: true,
+          },
+        },
+      },
+    });
+  }
+
+  async listPermissions() {
+    return this.prisma.permission.findMany({
+      orderBy: [{ module: 'asc' }, { code: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        module: true,
+        description: true,
+        isSystem: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            roles: true,
+            users: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getUserAccess(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        status: true,
+        userRoles: {
+          select: {
+            assignedAt: true,
+            assignedBy: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true,
+              },
+            },
+            role: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                description: true,
+                isSystem: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        directPermissions: {
+          select: {
+            effect: true,
+            assignedAt: true,
+            assignedBy: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true,
+              },
+            },
+            permission: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                module: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User was not found',
+      });
+    }
+
+    const effectiveAuthorization =
+      await this.authorizationService.getEffectiveAuthorization(userId);
+
+    return {
+      ...user,
+      effectivePermissions: effectiveAuthorization.permissionCodes,
+      isSuperAdmin: effectiveAuthorization.isSuperAdmin,
+    };
+  }
 
   async createPermission(actorId: string, dto: CreatePermissionDto): Promise<PermissionResponse> {
     const code = dto.code.trim();
 
+    let created;
+
     try {
-      return await this.prisma.$transaction(async (transaction) => {
+      created = await this.prisma.$transaction(async (transaction) => {
+        const superAdminRole = await transaction.role.findUnique({
+          where: {
+            code: 'SUPER_ADMIN',
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!superAdminRole) {
+          throw new Error('SUPER_ADMIN role is missing');
+        }
+
         const permission = await transaction.permission.create({
           data: {
             code,
@@ -67,6 +198,14 @@ export class AccessControlService {
           },
         });
 
+        await transaction.rolePermission.create({
+          data: {
+            roleId: superAdminRole.id,
+            permissionId: permission.id,
+            assignedById: actorId,
+          },
+        });
+
         await transaction.auditLog.create({
           data: {
             actorId,
@@ -82,20 +221,25 @@ export class AccessControlService {
           },
         });
 
-        return permission;
+        return { permission, superAdminRoleId: superAdminRole.id };
       });
     } catch (error) {
       this.throwConflictForUniqueCode(error, 'PERMISSION_CODE_ALREADY_EXISTS');
       throw error;
     }
+
+    await this.authorizationService.invalidateUsersByRole(created.superAdminRoleId);
+
+    return created.permission;
   }
 
   async createRole(actorId: string, dto: CreateRoleDto): Promise<RoleResponse> {
     const code = dto.code.trim().toUpperCase();
-    const permissionIds = dto.permissionIds;
+    const permissionIds = [...new Set(dto.permissionIds)];
 
     await this.assertActivePermissionsExist(permissionIds);
-    await this.policyService.assertCanGrantPermissionIds(actorId, permissionIds);
+    await this.policy.assertProtectedPermissionNotAssigned(permissionIds);
+    await this.policy.assertCanGrantPermissionIds(actorId, permissionIds);
 
     try {
       const role = await this.prisma.$transaction(async (transaction) => {
@@ -152,18 +296,131 @@ export class AccessControlService {
     }
   }
 
+  async replaceRolePermissions(
+    actorId: string,
+    roleId: string,
+    permissionIds: string[],
+  ): Promise<{ roleId: string; permissionIds: string[] }> {
+    const role = await this.prisma.role.findUnique({
+      where: {
+        id: roleId,
+      },
+      select: {
+        id: true,
+        code: true,
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException({
+        code: 'ROLE_NOT_FOUND',
+        message: 'Role was not found',
+      });
+    }
+
+    if (role.code === 'SUPER_ADMIN') {
+      throw new BadRequestException({
+        code: 'SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED',
+        message: 'SUPER_ADMIN permissions are managed automatically',
+      });
+    }
+
+    const uniquePermissionIds = [...new Set(permissionIds)];
+
+    await this.assertActivePermissionsExist(uniquePermissionIds);
+    await this.policy.assertProtectedPermissionNotAssigned(uniquePermissionIds);
+    await this.policy.assertCanGrantPermissionIds(actorId, uniquePermissionIds);
+
+    const affectedUsers = await this.prisma.userRole.findMany({
+      where: {
+        roleId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    await this.prisma.$transaction(async (transaction) => {
+      const before = await transaction.rolePermission.findMany({
+        where: {
+          roleId,
+        },
+        select: {
+          permissionId: true,
+        },
+      });
+
+      await transaction.rolePermission.deleteMany({
+        where: {
+          roleId,
+        },
+      });
+
+      if (uniquePermissionIds.length > 0) {
+        await transaction.rolePermission.createMany({
+          data: uniquePermissionIds.map((permissionId) => ({
+            roleId,
+            permissionId,
+            assignedById: actorId,
+          })),
+        });
+      }
+
+      const userIds = affectedUsers.map(({ userId }) => userId);
+
+      if (userIds.length > 0) {
+        await transaction.user.updateMany({
+          where: {
+            id: {
+              in: userIds,
+            },
+          },
+          data: {
+            authorizationVersion: {
+              increment: 1,
+            },
+          },
+        });
+      }
+
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: 'ROLE_PERMISSIONS_REPLACED',
+          resourceType: 'ROLE',
+          resourceId: roleId,
+          beforeData: {
+            permissionIds: before.map(({ permissionId }) => permissionId),
+          },
+          afterData: {
+            permissionIds: uniquePermissionIds,
+          },
+        },
+      });
+    });
+
+    await this.authorizationService.invalidateUsers(affectedUsers.map(({ userId }) => userId));
+
+    return {
+      roleId,
+      permissionIds: uniquePermissionIds,
+    };
+  }
+
   async replaceUserRoles(
     actorId: string,
     targetUserId: string,
     roleIds: string[],
   ): Promise<{ userId: string; roleIds: string[] }> {
     await this.assertUserExists(targetUserId);
-    await this.assertCanChangeTargetAccess(actorId, targetUserId);
+    await this.policy.assertCanModifyTargetUser(actorId, targetUserId);
+
+    const uniqueRoleIds = [...new Set(roleIds)];
 
     const roles = await this.prisma.role.findMany({
       where: {
         id: {
-          in: roleIds,
+          in: uniqueRoleIds,
         },
         isActive: true,
       },
@@ -172,15 +429,15 @@ export class AccessControlService {
       },
     });
 
-    if (roles.length !== roleIds.length) {
+    if (roles.length !== uniqueRoleIds.length) {
       throw new BadRequestException({
         code: 'INVALID_ROLES',
         message: 'One or more roles are invalid',
       });
     }
 
-    await this.policyService.assertCanAssignRoles(actorId, roleIds);
-    await this.assertDoesNotRemoveFinalSuperAdmin(targetUserId, roleIds);
+    await this.policy.assertCanAssignRoles(actorId, uniqueRoleIds);
+    await this.policy.assertNotRemovingLastSuperAdmin(targetUserId, uniqueRoleIds);
 
     await this.prisma.$transaction(async (transaction) => {
       const before = await transaction.userRole.findMany({
@@ -198,9 +455,9 @@ export class AccessControlService {
         },
       });
 
-      if (roleIds.length > 0) {
+      if (uniqueRoleIds.length > 0) {
         await transaction.userRole.createMany({
-          data: roleIds.map((roleId) => ({
+          data: uniqueRoleIds.map((roleId) => ({
             userId: targetUserId,
             roleId,
             assignedById: actorId,
@@ -229,7 +486,7 @@ export class AccessControlService {
             roleIds: before.map(({ roleId }) => roleId),
           },
           afterData: {
-            roleIds,
+            roleIds: uniqueRoleIds,
           },
         },
       });
@@ -239,7 +496,7 @@ export class AccessControlService {
 
     return {
       userId: targetUserId,
-      roleIds,
+      roleIds: uniqueRoleIds,
     };
   }
 
@@ -249,39 +506,20 @@ export class AccessControlService {
     permissions: DirectPermissionItemDto[],
   ): Promise<{ userId: string; permissions: DirectPermissionItemDto[] }> {
     await this.assertUserExists(targetUserId);
-    await this.assertCanChangeTargetAccess(actorId, targetUserId);
+    await this.policy.assertCanModifyTargetUser(actorId, targetUserId);
 
     const permissionIds = permissions.map(({ permissionId }) => permissionId);
-    const dbPermissions = await this.prisma.permission.findMany({
-      where: {
-        id: {
-          in: permissionIds,
-        },
-        isActive: true,
-      },
-      select: {
-        id: true,
-        code: true,
-      },
-    });
 
-    if (dbPermissions.length !== permissionIds.length) {
+    if (new Set(permissionIds).size !== permissionIds.length) {
       throw new BadRequestException({
-        code: 'INVALID_PERMISSIONS',
-        message: 'One or more permissions are invalid',
+        code: 'DUPLICATE_USER_PERMISSIONS',
+        message: 'A permission can only be configured once per user',
       });
     }
 
-    const directSuperAdmin = dbPermissions.some(({ code }) => code === SUPER_ADMIN_PERMISSION);
-
-    if (directSuperAdmin) {
-      throw new ForbiddenException({
-        code: 'DIRECT_SUPER_ADMIN_FORBIDDEN',
-        message: 'Super administrator permission must be granted through a protected system role',
-      });
-    }
-
-    await this.policyService.assertCanGrantPermissionIds(actorId, permissionIds);
+    await this.assertActivePermissionsExist(permissionIds);
+    await this.policy.assertProtectedPermissionNotAssigned(permissionIds);
+    await this.policy.assertCanGrantPermissionIds(actorId, permissionIds);
 
     await this.prisma.$transaction(async (transaction) => {
       const before = await transaction.userPermission.findMany({
@@ -353,6 +591,10 @@ export class AccessControlService {
   }
 
   private async assertActivePermissionsExist(permissionIds: string[]): Promise<void> {
+    if (permissionIds.length === 0) {
+      return;
+    }
+
     const permissions = await this.prisma.permission.findMany({
       where: {
         id: {
@@ -387,67 +629,6 @@ export class AccessControlService {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
         message: 'User was not found',
-      });
-    }
-  }
-
-  private async assertCanChangeTargetAccess(actorId: string, targetUserId: string): Promise<void> {
-    if (actorId !== targetUserId || (await this.policyService.isSuperAdmin(actorId))) {
-      return;
-    }
-
-    throw new ForbiddenException({
-      code: 'SELF_ACCESS_CHANGE_FORBIDDEN',
-      message: 'You cannot change your own access',
-    });
-  }
-
-  private async assertDoesNotRemoveFinalSuperAdmin(
-    targetUserId: string,
-    nextRoleIds: string[],
-  ): Promise<void> {
-    const superAdminRole = await this.prisma.role.findUnique({
-      where: {
-        code: 'SUPER_ADMIN',
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!superAdminRole || nextRoleIds.includes(superAdminRole.id)) {
-      return;
-    }
-
-    const targetHasSuperAdminRole = await this.prisma.userRole.findUnique({
-      where: {
-        userId_roleId: {
-          userId: targetUserId,
-          roleId: superAdminRole.id,
-        },
-      },
-      select: {
-        userId: true,
-      },
-    });
-
-    if (!targetHasSuperAdminRole) {
-      return;
-    }
-
-    const activeSuperAdminCount = await this.prisma.userRole.count({
-      where: {
-        roleId: superAdminRole.id,
-        user: {
-          status: 'ACTIVE',
-        },
-      },
-    });
-
-    if (activeSuperAdminCount <= 1) {
-      throw new ForbiddenException({
-        code: 'LAST_SUPER_ADMIN_PROTECTED',
-        message: 'The final super administrator cannot be removed',
       });
     }
   }

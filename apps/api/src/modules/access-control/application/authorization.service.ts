@@ -1,20 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { PrismaService } from '../../../database/prisma/prisma.service.js';
-import { RedisService } from '../../infrastructure/redis/redis.service.js';
+import { RedisService } from '../../../infrastructure/redis/redis.service.js';
+import { SYSTEM_PERMISSIONS } from '../domain/permission.constants.js';
+
+export type EffectiveAuthorization = {
+  permissionCodes: string[];
+  isSuperAdmin: boolean;
+};
 
 @Injectable()
 export class AuthorizationService {
   private readonly logger = new Logger(AuthorizationService.name);
 
-  private readonly cacheTtlSeconds = 300;
+  private readonly cacheTtlSeconds: number;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.cacheTtlSeconds = configService.get<number>('AUTHORIZATION_CACHE_TTL_SECONDS') ?? 300;
+  }
 
-  async getEffectivePermissionCodes(userId: string): Promise<string[]> {
+  async getEffectiveAuthorization(userId: string): Promise<EffectiveAuthorization> {
     const cacheKey = this.getUserCacheKey(userId);
 
     const cached = await this.readCache(cacheKey);
@@ -28,6 +38,7 @@ export class AuthorizationService {
         id: userId,
       },
       select: {
+        status: true,
         userRoles: {
           where: {
             role: {
@@ -74,8 +85,11 @@ export class AuthorizationService {
       },
     });
 
-    if (!user) {
-      return [];
+    if (!user || user.status !== 'ACTIVE') {
+      return {
+        permissionCodes: [],
+        isSuperAdmin: false,
+      };
     }
 
     const allowed = new Set<string>();
@@ -101,11 +115,22 @@ export class AuthorizationService {
       allowed.delete(code);
     }
 
-    const effectivePermissions = [...allowed].sort();
+    const permissionCodes = [...allowed].sort();
 
-    await this.writeCache(cacheKey, effectivePermissions);
+    const result: EffectiveAuthorization = {
+      permissionCodes,
+      isSuperAdmin: allowed.has(SYSTEM_PERMISSIONS.SUPER_ADMIN),
+    };
 
-    return effectivePermissions;
+    await this.writeCache(cacheKey, result);
+
+    return result;
+  }
+
+  async getEffectivePermissionCodes(userId: string): Promise<string[]> {
+    const authorization = await this.getEffectiveAuthorization(userId);
+
+    return authorization.permissionCodes;
   }
 
   async hasAllPermissions(userId: string, requiredPermissions: string[]): Promise<boolean> {
@@ -113,18 +138,50 @@ export class AuthorizationService {
       return true;
     }
 
-    const effective = await this.getEffectivePermissionCodes(userId);
+    const authorization = await this.getEffectiveAuthorization(userId);
 
-    const permissionSet = new Set(effective);
+    if (authorization.isSuperAdmin) {
+      return true;
+    }
+
+    const permissionSet = new Set(authorization.permissionCodes);
 
     return requiredPermissions.every((permission) => permissionSet.has(permission));
   }
 
+  async hasAnyPermission(userId: string, requiredPermissions: string[]): Promise<boolean> {
+    if (requiredPermissions.length === 0) {
+      return true;
+    }
+
+    const authorization = await this.getEffectiveAuthorization(userId);
+
+    if (authorization.isSuperAdmin) {
+      return true;
+    }
+
+    const permissionSet = new Set(authorization.permissionCodes);
+
+    return requiredPermissions.some((permission) => permissionSet.has(permission));
+  }
+
   async invalidateUser(userId: string): Promise<void> {
+    await this.invalidateUsers([userId]);
+  }
+
+  async invalidateUsers(userIds: string[]): Promise<void> {
+    const uniqueUserIds = [...new Set(userIds)];
+
+    if (uniqueUserIds.length === 0) {
+      return;
+    }
+
+    const keys = uniqueUserIds.map((userId) => this.getUserCacheKey(userId));
+
     try {
-      await this.redis.client.del(this.getUserCacheKey(userId));
+      await this.redis.client.del(...keys);
     } catch {
-      this.logger.warn(`Unable to invalidate authorization cache for user ${userId}`);
+      this.logger.warn('Unable to invalidate authorization cache for users');
     }
   }
 
@@ -138,24 +195,14 @@ export class AuthorizationService {
       },
     });
 
-    if (assignments.length === 0) {
-      return;
-    }
-
-    const keys = assignments.map(({ userId }) => this.getUserCacheKey(userId));
-
-    try {
-      await this.redis.client.del(...keys);
-    } catch {
-      this.logger.warn(`Unable to invalidate caches for role ${roleId}`);
-    }
+    await this.invalidateUsers(assignments.map(({ userId }) => userId));
   }
 
   private getUserCacheKey(userId: string): string {
     return `authorization:user:${userId}:permissions`;
   }
 
-  private async readCache(key: string): Promise<string[] | null> {
+  private async readCache(key: string): Promise<EffectiveAuthorization | null> {
     try {
       const value = await this.redis.client.get(key);
 
@@ -165,19 +212,26 @@ export class AuthorizationService {
 
       const parsed: unknown = JSON.parse(value);
 
-      return Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')
-        ? parsed
-        : null;
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        Array.isArray((parsed as EffectiveAuthorization).permissionCodes) &&
+        typeof (parsed as EffectiveAuthorization).isSuperAdmin === 'boolean'
+      ) {
+        return parsed as EffectiveAuthorization;
+      }
+
+      return null;
     } catch {
       return null;
     }
   }
 
-  private async writeCache(key: string, permissions: string[]): Promise<void> {
+  private async writeCache(key: string, value: EffectiveAuthorization): Promise<void> {
     try {
-      await this.redis.client.set(key, JSON.stringify(permissions), 'EX', this.cacheTtlSeconds);
+      await this.redis.client.set(key, JSON.stringify(value), 'EX', this.cacheTtlSeconds);
     } catch {
-      this.logger.warn('Unable to cache effective permissions');
+      this.logger.warn('Unable to cache effective authorization');
     }
   }
 }

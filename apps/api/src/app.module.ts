@@ -4,6 +4,7 @@ import { AccessControlModule } from './modules/access-control/access-control.mod
 import { HealthModule } from './modules/health/health.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { PrismaModule } from './database/prisma/prisma.module.js';
+import { RedisModule } from './infrastructure/redis/redis.module.js';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PrismaModule } from './database/prisma/prisma.module.js';
       envFilePath: ['../../.env', '.env'],
     }),
     PrismaModule,
+    RedisModule,
     HealthModule,
     IdentityModule,
     AccessControlModule,
