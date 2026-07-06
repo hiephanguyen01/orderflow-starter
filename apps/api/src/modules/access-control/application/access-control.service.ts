@@ -11,13 +11,15 @@ import { PaginatedResult } from '../../../shared/types/paginated-result.js';
 import { SYSTEM_PERMISSIONS } from '../domain/permission.constants.js';
 import { CreatePermissionDto } from '../presentation/http/dto/create-permission.dto.js';
 import { CreateRoleDto } from '../presentation/http/dto/create-role.dto.js';
+import { ListPermissionsQueryDto } from '../presentation/http/dto/list-permissions-query.dto.js';
 import { ListRolesQueryDto } from '../presentation/http/dto/list-roles-query.dto.js';
 import { DirectPermissionItemDto } from '../presentation/http/dto/replace-user-permissions.dto.js';
+import { UpdatePermissionDto } from '../presentation/http/dto/update-permission.dto.js';
 import { UpdateRoleConfigurationDto } from '../presentation/http/dto/update-role-configuration.dto.js';
 import { AuthorizationPolicyService } from './authorization-policy.service.js';
 import { AuthorizationService } from './authorization.service.js';
 
-type PermissionResponse = {
+type PermissionListItem = {
   id: string;
   code: string;
   name: string;
@@ -25,6 +27,10 @@ type PermissionResponse = {
   description: string | null;
   isSystem: boolean;
   isActive: boolean;
+  roleCount: number;
+  directUserCount: number;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 type RoleResponse = {
@@ -242,9 +248,122 @@ export class AccessControlService {
     });
   }
 
-  async listPermissions() {
-    return this.prisma.permission.findMany({
-      orderBy: [{ module: 'asc' }, { code: 'asc' }],
+  async listPermissions(
+    query: ListPermissionsQueryDto,
+  ): Promise<PaginatedResult<PermissionListItem>> {
+    const page = query.page;
+    const pageSize = query.pageSize;
+
+    const search = query.search?.trim() || undefined;
+    const module = query.module?.trim().toLowerCase() || undefined;
+
+    const where: Prisma.PermissionWhereInput = {
+      ...(module ? { module } : {}),
+      ...(typeof query.isActive === 'boolean' ? { isActive: query.isActive } : {}),
+      ...(typeof query.isSystem === 'boolean' ? { isSystem: query.isSystem } : {}),
+      ...(search
+        ? {
+            OR: [
+              {
+                code: {
+                  contains: search.toLowerCase(),
+                  mode: 'insensitive',
+                },
+              },
+              {
+                name: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                module: {
+                  contains: search.toLowerCase(),
+                  mode: 'insensitive',
+                },
+              },
+              {
+                description: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const skip = (page - 1) * pageSize;
+
+    const [permissions, total] = await this.prisma.$transaction([
+      this.prisma.permission.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: [{ module: 'asc' }, { code: 'asc' }],
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          module: true,
+          description: true,
+          isSystem: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              roles: true,
+              users: true,
+            },
+          },
+        },
+      }),
+      this.prisma.permission.count({ where }),
+    ]);
+
+    return {
+      items: permissions.map((permission) => ({
+        id: permission.id,
+        code: permission.code,
+        name: permission.name,
+        module: permission.module,
+        description: permission.description,
+        isSystem: permission.isSystem,
+        isActive: permission.isActive,
+        roleCount: permission._count.roles,
+        directUserCount: permission._count.users,
+        createdAt: permission.createdAt,
+        updatedAt: permission.updatedAt,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
+    };
+  }
+
+  async listPermissionModules(): Promise<string[]> {
+    const modules = await this.prisma.permission.findMany({
+      distinct: ['module'],
+      orderBy: {
+        module: 'asc',
+      },
+      select: {
+        module: true,
+      },
+    });
+
+    return modules.map(({ module }) => module);
+  }
+
+  async getPermissionById(permissionId: string) {
+    const permission = await this.prisma.permission.findUnique({
+      where: {
+        id: permissionId,
+      },
       select: {
         id: true,
         code: true,
@@ -255,14 +374,72 @@ export class AccessControlService {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        _count: {
+        roles: {
+          orderBy: {
+            role: {
+              name: 'asc',
+            },
+          },
           select: {
-            roles: true,
-            users: true,
+            assignedAt: true,
+            role: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                isSystem: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        users: {
+          orderBy: {
+            assignedAt: 'desc',
+          },
+          select: {
+            effect: true,
+            assignedAt: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                displayName: true,
+                status: true,
+              },
+            },
           },
         },
       },
     });
+
+    if (!permission) {
+      throw new NotFoundException({
+        code: 'PERMISSION_NOT_FOUND',
+        message: 'Permission not found',
+      });
+    }
+
+    return {
+      id: permission.id,
+      code: permission.code,
+      name: permission.name,
+      module: permission.module,
+      description: permission.description,
+      isSystem: permission.isSystem,
+      isActive: permission.isActive,
+      roles: permission.roles.map(({ role, assignedAt }) => ({
+        ...role,
+        assignedAt,
+      })),
+      directUsers: permission.users.map(({ user, effect, assignedAt }) => ({
+        user,
+        effect,
+        assignedAt,
+      })),
+      createdAt: permission.createdAt,
+      updatedAt: permission.updatedAt,
+    };
   }
 
   async getUserAccess(userId: string) {
@@ -339,8 +516,11 @@ export class AccessControlService {
     };
   }
 
-  async createPermission(actorId: string, dto: CreatePermissionDto): Promise<PermissionResponse> {
-    const code = dto.code.trim();
+  async createPermission(actorId: string, dto: CreatePermissionDto): Promise<PermissionListItem> {
+    const code = dto.code.trim().toLowerCase();
+    const module = dto.module.trim().toLowerCase();
+
+    this.assertRuntimePermissionNamespace(code, module);
 
     let created;
 
@@ -362,8 +542,8 @@ export class AccessControlService {
         const permission = await transaction.permission.create({
           data: {
             code,
+            module,
             name: dto.name.trim(),
-            module: dto.module.trim(),
             description: this.normalizeOptionalText(dto.description),
           },
           select: {
@@ -374,6 +554,8 @@ export class AccessControlService {
             description: true,
             isSystem: true,
             isActive: true,
+            createdAt: true,
+            updatedAt: true,
           },
         });
 
@@ -409,7 +591,171 @@ export class AccessControlService {
 
     await this.authorizationService.invalidateUsersByRole(created.superAdminRoleId);
 
-    return created.permission;
+    return {
+      ...created.permission,
+      roleCount: 1,
+      directUserCount: 0,
+    };
+  }
+
+  async updatePermission(actorId: string, permissionId: string, dto: UpdatePermissionDto) {
+    const permission = await this.prisma.permission.findUnique({
+      where: {
+        id: permissionId,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        module: true,
+        description: true,
+        isSystem: true,
+        isActive: true,
+      },
+    });
+
+    if (!permission) {
+      throw new NotFoundException({
+        code: 'PERMISSION_NOT_FOUND',
+        message: 'Permission not found',
+      });
+    }
+
+    if (permission.isSystem) {
+      throw new BadRequestException({
+        code: 'SYSTEM_PERMISSION_CANNOT_BE_MODIFIED',
+        message: 'System permissions cannot be modified',
+      });
+    }
+
+    const activeStateChanged = permission.isActive !== dto.isActive;
+
+    const affectedUserIds = activeStateChanged
+      ? await this.findAffectedUserIdsByPermission(permissionId)
+      : [];
+
+    const updatedPermission = await this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.permission.update({
+        where: {
+          id: permissionId,
+        },
+        data: {
+          name: dto.name.trim(),
+          description: this.normalizeOptionalText(dto.description ?? undefined),
+          isActive: dto.isActive,
+        },
+      });
+
+      if (activeStateChanged && affectedUserIds.length > 0) {
+        await transaction.user.updateMany({
+          where: {
+            id: {
+              in: affectedUserIds,
+            },
+          },
+          data: {
+            authorizationVersion: {
+              increment: 1,
+            },
+          },
+        });
+      }
+
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: 'PERMISSION_UPDATED',
+          resourceType: 'PERMISSION',
+          resourceId: permission.id,
+          beforeData: {
+            name: permission.name,
+            description: permission.description,
+            isActive: permission.isActive,
+          },
+          afterData: {
+            name: updated.name,
+            description: updated.description,
+            isActive: updated.isActive,
+          },
+        },
+      });
+
+      return updated;
+    });
+
+    if (activeStateChanged) {
+      await this.authorizationService.invalidateUsers(affectedUserIds);
+    }
+
+    return updatedPermission;
+  }
+
+  async deletePermission(actorId: string, permissionId: string): Promise<void> {
+    const permission = await this.prisma.permission.findUnique({
+      where: {
+        id: permissionId,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        module: true,
+        description: true,
+        isSystem: true,
+        _count: {
+          select: {
+            roles: true,
+            users: true,
+          },
+        },
+      },
+    });
+
+    if (!permission) {
+      throw new NotFoundException({
+        code: 'PERMISSION_NOT_FOUND',
+        message: 'Permission not found',
+      });
+    }
+
+    if (permission.isSystem) {
+      throw new BadRequestException({
+        code: 'SYSTEM_PERMISSION_CANNOT_BE_DELETED',
+        message: 'System permissions cannot be deleted',
+      });
+    }
+
+    if (permission._count.roles > 0 || permission._count.users > 0) {
+      throw new ConflictException({
+        code: 'PERMISSION_IS_ASSIGNED',
+        message: 'Permission is assigned to roles or users',
+        roleCount: permission._count.roles,
+        directUserCount: permission._count.users,
+      });
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: 'PERMISSION_DELETED',
+          resourceType: 'PERMISSION',
+          resourceId: permission.id,
+          beforeData: {
+            code: permission.code,
+            name: permission.name,
+            module: permission.module,
+            description: permission.description,
+          },
+        },
+      });
+
+      await transaction.permission.delete({
+        where: {
+          id: permissionId,
+        },
+      });
+    });
   }
 
   async createRole(actorId: string, dto: CreateRoleDto): Promise<RoleResponse> {
@@ -940,5 +1286,57 @@ export class AccessControlService {
     const leftSet = new Set(left);
 
     return right.every((value) => leftSet.has(value));
+  }
+
+  private assertRuntimePermissionNamespace(code: string, module: string): void {
+    if (
+      code === SYSTEM_PERMISSIONS.SUPER_ADMIN ||
+      code.startsWith('system.') ||
+      module === 'system'
+    ) {
+      throw new BadRequestException({
+        code: 'RESERVED_PERMISSION_NAMESPACE',
+        message: 'The system permission namespace is reserved',
+      });
+    }
+  }
+
+  private async findAffectedUserIdsByPermission(permissionId: string): Promise<string[]> {
+    const permission = await this.prisma.permission.findUnique({
+      where: {
+        id: permissionId,
+      },
+      select: {
+        users: {
+          select: {
+            userId: true,
+          },
+        },
+        roles: {
+          select: {
+            role: {
+              select: {
+                users: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!permission) {
+      return [];
+    }
+
+    return [
+      ...new Set([
+        ...permission.users.map(({ userId }) => userId),
+        ...permission.roles.flatMap(({ role }) => role.users.map(({ userId }) => userId)),
+      ]),
+    ];
   }
 }

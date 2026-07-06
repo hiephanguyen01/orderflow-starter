@@ -77,6 +77,94 @@
         }
       }
     },
+    "permissions": {
+      "title": "Quyền hạn",
+      "description": "Tạo và quản lý quyền hạn hệ thống",
+      "create": "Tạo quyền hạn",
+      "tableLabel": "Danh sách quyền hạn",
+      "loading": "Đang tải quyền hạn...",
+      "empty": "Không tìm thấy quyền hạn nào",
+      "columns": {
+        "permission": "Quyền hạn",
+        "module": "Module",
+        "roles": "Số vai trò",
+        "directUsers": "Số người dùng trực tiếp",
+        "type": "Loại",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "type": {
+        "system": "Hệ thống",
+        "custom": "Tùy chỉnh"
+      },
+      "status": {
+        "active": "Đang hoạt động",
+        "inactive": "Ngừng hoạt động"
+      },
+      "actions": {
+        "edit": "Chỉnh sửa",
+        "delete": "Xóa"
+      },
+      "filters": {
+        "searchLabel": "Tìm kiếm quyền hạn",
+        "searchPlaceholder": "Tìm theo mã, tên, module hoặc mô tả",
+        "module": "Module",
+        "allModules": "Tất cả module",
+        "status": "Trạng thái",
+        "statusValues": {
+          "ALL": "Tất cả",
+          "ACTIVE": "Đang hoạt động",
+          "INACTIVE": "Ngừng hoạt động"
+        },
+        "type": "Loại",
+        "typeValues": {
+          "ALL": "Tất cả",
+          "SYSTEM": "Hệ thống",
+          "CUSTOM": "Tùy chỉnh"
+        }
+      },
+      "pagination": {
+        "summary": "Trang {page}/{totalPages} ({total} quyền hạn)",
+        "previous": "Trước",
+        "next": "Sau"
+      },
+      "deleteModal": {
+        "title": "Xóa quyền hạn",
+        "confirmation": "Bạn có chắc chắn muốn xóa \"{name}\"? Hành động này không thể hoàn tác.",
+        "cancel": "Hủy",
+        "confirm": "Xóa"
+      },
+      "form": {
+        "createTitle": "Tạo quyền hạn",
+        "editTitle": "Chỉnh sửa quyền hạn",
+        "cancel": "Hủy",
+        "save": "Lưu thay đổi",
+        "create": "Tạo quyền hạn",
+        "runtimeNotice": "Quyền hạn mới chỉ có hiệu lực khi backend sử dụng permission code này tại endpoint hoặc business policy.",
+        "fields": {
+          "code": "Mã quyền hạn",
+          "module": "Module",
+          "name": "Tên quyền hạn",
+          "description": "Mô tả",
+          "isActive": "Đang hoạt động"
+        },
+        "placeholders": {
+          "code": "shipments.assign",
+          "module": "shipments",
+          "name": "Phân công giao hàng",
+          "description": "Mô tả quyền hạn này cho phép làm gì"
+        },
+        "validation": {
+          "codeRequired": "Vui lòng nhập mã quyền hạn",
+          "codeInvalid": "Dùng chữ thường, số, dấu gạch ngang và ít nhất một dấu chấm (ví dụ: resource.action)",
+          "nameRequired": "Vui lòng nhập tên quyền hạn",
+          "nameTooLong": "Tên quyền hạn không được vượt quá 150 ký tự",
+          "moduleRequired": "Vui lòng nhập module",
+          "moduleInvalid": "Chỉ dùng chữ thường, số và dấu gạch ngang",
+          "descriptionTooLong": "Mô tả không được vượt quá 500 ký tự"
+        }
+      }
+    },
     "title": "Quản lý phân quyền"
   },
   "AdminDashboard": {
@@ -151,14 +239,19 @@
     "INVALID_SESSION": "Phiên đăng nhập không hợp lệ",
     "NETWORK_ERROR": "Không thể kết nối đến máy chủ",
     "PERMISSION_CODE_ALREADY_EXISTS": "Mã quyền đã tồn tại",
+    "PERMISSION_IS_ASSIGNED": "Quyền này đang được gán cho một hoặc nhiều vai trò hoặc người dùng",
+    "PERMISSION_NOT_FOUND": "Không tìm thấy quyền hạn",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "Bạn không thể cấp quyền cao hơn quyền hiện tại",
     "PROTECTED_PERMISSION_ASSIGNMENT_FORBIDDEN": "Quyền này không thể được gán thủ công",
     "REFRESH_TOKEN_REQUIRED": "Không tìm thấy phiên đăng nhập",
     "REFRESH_TOKEN_REUSED": "Phát hiện refresh token đã được sử dụng lại",
+    "RESERVED_PERMISSION_NAMESPACE": "Namespace hệ thống được bảo lưu",
     "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại",
     "ROLE_IS_ASSIGNED_TO_USERS": "Vai trò này đang được gán cho một hoặc nhiều người dùng",
     "ROLE_NOT_FOUND": "Không tìm thấy vai trò",
     "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "Quyền của SUPER_ADMIN được quản lý tự động",
+    "SYSTEM_PERMISSION_CANNOT_BE_DELETED": "Không thể xóa quyền hạn hệ thống",
+    "SYSTEM_PERMISSION_CANNOT_BE_MODIFIED": "Không thể chỉnh sửa quyền hạn hệ thống",
     "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "Không thể tắt vai trò hệ thống",
     "SYSTEM_ROLE_CANNOT_BE_DELETED": "Không thể xóa vai trò hệ thống",
     "INVALID_PERMISSIONS": "Một hoặc nhiều quyền không hợp lệ",

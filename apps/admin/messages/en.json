@@ -77,6 +77,94 @@
         }
       }
     },
+    "permissions": {
+      "title": "Permissions",
+      "description": "Create and manage system permissions",
+      "create": "Create permission",
+      "tableLabel": "Permission list",
+      "loading": "Loading permissions...",
+      "empty": "No permissions found",
+      "columns": {
+        "permission": "Permission",
+        "module": "Module",
+        "roles": "Roles",
+        "directUsers": "Direct users",
+        "type": "Type",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "type": {
+        "system": "System",
+        "custom": "Custom"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "filters": {
+        "searchLabel": "Search permissions",
+        "searchPlaceholder": "Search by code, name, module or description",
+        "module": "Module",
+        "allModules": "All modules",
+        "status": "Status",
+        "statusValues": {
+          "ALL": "All",
+          "ACTIVE": "Active",
+          "INACTIVE": "Inactive"
+        },
+        "type": "Type",
+        "typeValues": {
+          "ALL": "All",
+          "SYSTEM": "System",
+          "CUSTOM": "Custom"
+        }
+      },
+      "pagination": {
+        "summary": "Page {page} of {totalPages} ({total} permissions)",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "deleteModal": {
+        "title": "Delete permission",
+        "confirmation": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "form": {
+        "createTitle": "Create permission",
+        "editTitle": "Edit permission",
+        "cancel": "Cancel",
+        "save": "Save changes",
+        "create": "Create permission",
+        "runtimeNotice": "A new permission only takes effect once backend code checks this permission code at an endpoint or business policy.",
+        "fields": {
+          "code": "Permission code",
+          "module": "Module",
+          "name": "Permission name",
+          "description": "Description",
+          "isActive": "Active"
+        },
+        "placeholders": {
+          "code": "shipments.assign",
+          "module": "shipments",
+          "name": "Assign shipments",
+          "description": "Describe what this permission allows"
+        },
+        "validation": {
+          "codeRequired": "Permission code is required",
+          "codeInvalid": "Use lowercase letters, numbers, hyphens and at least one dot (e.g. resource.action)",
+          "nameRequired": "Permission name is required",
+          "nameTooLong": "Permission name must not exceed 150 characters",
+          "moduleRequired": "Module is required",
+          "moduleInvalid": "Use lowercase letters, numbers and hyphens only",
+          "descriptionTooLong": "Description must not exceed 500 characters"
+        }
+      }
+    },
     "title": "Access control"
   },
   "AdminDashboard": {
@@ -151,14 +239,19 @@
     "INVALID_SESSION": "Invalid login session",
     "NETWORK_ERROR": "Unable to connect to the server",
     "PERMISSION_CODE_ALREADY_EXISTS": "Permission code already exists",
+    "PERMISSION_IS_ASSIGNED": "This permission is assigned to one or more roles or users",
+    "PERMISSION_NOT_FOUND": "Permission not found",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "You cannot grant a permission higher than your current permission",
     "PROTECTED_PERMISSION_ASSIGNMENT_FORBIDDEN": "This permission cannot be assigned manually",
     "REFRESH_TOKEN_REQUIRED": "No login session was found",
     "REFRESH_TOKEN_REUSED": "Detected refresh token has been reused",
+    "RESERVED_PERMISSION_NAMESPACE": "The system permission namespace is reserved",
     "ROLE_CODE_ALREADY_EXISTS": "Role code already exists",
     "ROLE_IS_ASSIGNED_TO_USERS": "This role is assigned to one or more users",
     "ROLE_NOT_FOUND": "Role not found",
     "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "SUPER_ADMIN permissions are managed automatically",
+    "SYSTEM_PERMISSION_CANNOT_BE_DELETED": "System permissions cannot be deleted",
+    "SYSTEM_PERMISSION_CANNOT_BE_MODIFIED": "System permissions cannot be modified",
     "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "System roles cannot be deactivated",
     "SYSTEM_ROLE_CANNOT_BE_DELETED": "System roles cannot be deleted",
     "INVALID_PERMISSIONS": "One or more permissions are invalid",
