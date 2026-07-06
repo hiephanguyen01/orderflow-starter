@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { PrismaService } from '../../../database/prisma.service.js';
+import { PrismaService } from '../../../database/prisma/prisma.service.js';
 import { RedisService } from '../../infrastructure/redis/redis.service.js';
 
 @Injectable()
@@ -28,7 +28,7 @@ export class AuthorizationService {
         id: userId,
       },
       select: {
-        roles: {
+        userRoles: {
           where: {
             role: {
               isActive: true,
@@ -81,7 +81,7 @@ export class AuthorizationService {
     const allowed = new Set<string>();
     const denied = new Set<string>();
 
-    for (const userRole of user.roles) {
+    for (const userRole of user.userRoles) {
       for (const rolePermission of userRole.role.permissions) {
         allowed.add(rolePermission.permission.code);
       }

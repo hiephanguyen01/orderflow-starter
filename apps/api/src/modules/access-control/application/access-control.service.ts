@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { Prisma, type PermissionEffect } from '../../../generated/prisma/client.js';
-import { PrismaService } from '../../../database/prisma.service.js';
+import { PrismaService } from '../../../database/prisma/prisma.service.js';
 import { CreatePermissionDto } from '../dto/create-permission.dto.js';
 import { CreateRoleDto } from '../dto/create-role.dto.js';
 import { DirectPermissionItemDto } from '../dto/replace-user-permissions.dto.js';
@@ -73,7 +73,7 @@ export class AccessControlService {
             action: 'PERMISSION_CREATED',
             resourceType: 'PERMISSION',
             resourceId: permission.id,
-            after: {
+            afterData: {
               code: permission.code,
               name: permission.name,
               module: permission.module,
@@ -131,7 +131,7 @@ export class AccessControlService {
             action: 'ROLE_CREATED',
             resourceType: 'ROLE',
             resourceId: createdRole.id,
-            after: {
+            afterData: {
               code: createdRole.code,
               name: createdRole.name,
               permissionIds,
@@ -225,10 +225,10 @@ export class AccessControlService {
           action: 'USER_ROLES_REPLACED',
           resourceType: 'USER',
           resourceId: targetUserId,
-          before: {
+          beforeData: {
             roleIds: before.map(({ roleId }) => roleId),
           },
-          after: {
+          afterData: {
             roleIds,
           },
         },
@@ -328,13 +328,13 @@ export class AccessControlService {
           action: 'USER_PERMISSIONS_REPLACED',
           resourceType: 'USER',
           resourceId: targetUserId,
-          before: {
+          beforeData: {
             permissions: before.map(({ permissionId, effect }) => ({
               permissionId,
               effect,
             })),
           },
-          after: {
+          afterData: {
             permissions: permissions.map(({ permissionId, effect }) => ({
               permissionId,
               effect,

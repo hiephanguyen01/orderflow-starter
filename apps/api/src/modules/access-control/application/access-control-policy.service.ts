@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../../../database/prisma.service.js';
+import { PrismaService } from '../../../database/prisma/prisma.service.js';
 import { AuthorizationService } from './authorization.service.js';
 
 const SUPER_ADMIN_PERMISSION = 'system.super-admin';

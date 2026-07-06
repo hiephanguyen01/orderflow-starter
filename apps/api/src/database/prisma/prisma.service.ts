@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -24,7 +24,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       log:
         configService.get<string>('NODE_ENV') === 'development'
-          ? [
+          ? ([
               {
                 emit: 'event',
                 level: 'error',
@@ -33,20 +33,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
                 emit: 'event',
                 level: 'warn',
               },
-            ]
-          : [
+            ] as const)
+          : ([
               {
                 emit: 'event',
                 level: 'error',
               },
-            ],
+            ] as const),
     });
 
-    this.$on('error', (event) => {
+    this.$on('error' as never, (event: Prisma.LogEvent) => {
       this.logger.error(event.message);
     });
 
-    this.$on('warn', (event) => {
+    this.$on('warn' as never, (event: Prisma.LogEvent) => {
       this.logger.warn(event.message);
     });
   }

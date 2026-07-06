@@ -1,8 +1,8 @@
 import { Body, Controller, Param, ParseUUIDPipe, Put, UseGuards } from '@nestjs/common';
 
-import { CurrentUser } from '../../identity/presentation/current-user.decorator.js';
-import { JwtAuthGuard } from '../../identity/presentation/jwt-auth.guard.js';
-import type { AuthPrincipal } from '../../identity/types/auth-principal.js';
+import { CurrentUser } from '../../identity/presentation/http/decorators/current-user.decorator.js';
+import { JwtAuthGuard } from '../../identity/presentation/http/guards/jwt-auth.guard.js';
+import type { AuthPrincipal } from '../../identity/domain/auth.types.js';
 import { AccessControlService } from '../application/access-control.service.js';
 import { ReplaceUserPermissionsDto } from '../dto/replace-user-permissions.dto.js';
 import { ReplaceUserRolesDto } from '../dto/replace-user-roles.dto.js';

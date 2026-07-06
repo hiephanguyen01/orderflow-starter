@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { permissionDefinitions } from 'src/database/prisma/seed-data.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import type { Prisma } from '../src/generated/prisma/client.js';
 
 config({
   path: fileURLToPath(new URL('../../../.env', import.meta.url)),
@@ -198,7 +199,7 @@ async function createSeedAuditLog(metadata: Record<string, unknown>): Promise<vo
       action: 'SYSTEM_SEED_COMPLETED',
       resourceType: 'SYSTEM',
       resourceId: 'identity-rbac',
-      metadata,
+      metadata: metadata as Prisma.InputJsonValue,
     },
   });
 }

@@ -1,102 +1,106 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
-import { randomUUID } from 'node:crypto';
-import { AccessTokenPayload, RefreshTokenPayload } from '../types/auth-principal.js';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 
-type JwtExpiresIn = NonNullable<JwtSignOptions['expiresIn']>;
-type JwtExpiresInString = Extract<JwtExpiresIn, string>;
+import authConfig from '../config/auth.config.js';
+import type { AccessTokenPayload, RefreshTokenPayload } from '../domain/auth.types.js';
 
-const JWT_EXPIRES_IN_PATTERN =
-  /^-?\d+(?:\.\d+)?(?:\s?(?:years?|yrs?|y|weeks?|w|days?|d|hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s|milliseconds?|msecs?|ms))?$/i;
+type IssueAccessTokenInput = {
+  userId: string;
+  sessionId: string;
+};
+
+type IssueRefreshTokenInput = {
+  userId: string;
+  sessionId: string;
+  refreshTokenId: string;
+  expiresInSeconds: number;
+};
 
 @Injectable()
 export class TokenService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+
+    @Inject(authConfig.KEY)
+    private readonly config: ConfigType<typeof authConfig>,
   ) {}
 
-  issueAccessToken(userId: string, sessionId: string): Promise<string> {
+  get accessTokenTtlSeconds(): number {
+    return this.config.accessTokenTtlSeconds;
+  }
+
+  createRefreshTokenExpiresAt(): Date {
+    const milliseconds = this.config.refreshTokenTtlDays * 24 * 60 * 60 * 1000;
+
+    return new Date(Date.now() + milliseconds);
+  }
+
+  calculateRemainingSeconds(expiresAt: Date): number {
+    return Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+  }
+
+  issueAccessToken(input: IssueAccessTokenInput): Promise<string> {
     const payload: AccessTokenPayload = {
-      sub: userId,
-      sid: sessionId,
+      sub: input.userId,
+      sid: input.sessionId,
       type: 'access',
     };
 
     return this.jwtService.signAsync(payload, {
-      secret: this.getAccessSecret(),
-      expiresIn: this.getAccessTokenTtl(),
+      secret: this.config.accessTokenSecret,
+
+      expiresIn: this.config.accessTokenTtlSeconds,
+
+      issuer: this.config.issuer,
+      audience: this.config.audience,
+
+      algorithm: 'HS256',
     });
   }
 
-  issueRefreshToken(userId: string, sessionId: string): Promise<string> {
+  issueRefreshToken(input: IssueRefreshTokenInput): Promise<string> {
     const payload: RefreshTokenPayload = {
-      sub: userId,
-      sid: sessionId,
-      jti: randomUUID(),
+      sub: input.userId,
+      sid: input.sessionId,
+      jti: input.refreshTokenId,
       type: 'refresh',
     };
 
-    const refreshDays = this.configService.get<number>('AUTH_REFRESH_TOKEN_TTL_DAYS') ?? 30;
-
     return this.jwtService.signAsync(payload, {
-      secret: this.getRefreshSecret(),
-      expiresIn: this.getRefreshTokenTtl(refreshDays),
+      secret: this.config.refreshTokenSecret,
+
+      expiresIn: input.expiresInSeconds,
+
+      issuer: this.config.issuer,
+      audience: this.config.audience,
+
+      algorithm: 'HS256',
     });
   }
 
   async verifyRefreshToken(token: string): Promise<RefreshTokenPayload> {
     try {
       const payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(token, {
-        secret: this.getRefreshSecret(),
+        secret: this.config.refreshTokenSecret,
+
+        issuer: this.config.issuer,
+
+        audience: this.config.audience,
+
+        algorithms: ['HS256'],
       });
 
-      if (payload.type !== 'refresh') {
-        throw new UnauthorizedException('Invalid refresh token');
+      if (payload.type !== 'refresh' || !payload.sub || !payload.sid || !payload.jti) {
+        throw new Error('Invalid refresh token payload');
       }
 
       return payload;
     } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid or expired',
+      });
     }
-  }
-
-  private getAccessSecret(): string {
-    const value = this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET');
-
-    if (!value) {
-      throw new Error('AUTH_ACCESS_TOKEN_SECRET is required');
-    }
-
-    return value;
-  }
-
-  private getRefreshSecret(): string {
-    const value = this.configService.get<string>('AUTH_REFRESH_TOKEN_SECRET');
-
-    if (!value) {
-      throw new Error('AUTH_REFRESH_TOKEN_SECRET is required');
-    }
-
-    return value;
-  }
-
-  private getAccessTokenTtl(): JwtExpiresIn {
-    const value = this.configService.get<string>('AUTH_ACCESS_TOKEN_TTL') ?? '15m';
-
-    if (!this.isJwtExpiresIn(value)) {
-      throw new Error('AUTH_ACCESS_TOKEN_TTL must be a valid JWT expiresIn value');
-    }
-
-    return value;
-  }
-
-  private getRefreshTokenTtl(refreshDays: number): JwtExpiresIn {
-    return `${refreshDays}d` as const;
-  }
-
-  private isJwtExpiresIn(value: string): value is JwtExpiresInString {
-    return JWT_EXPIRES_IN_PATTERN.test(value);
   }
 }

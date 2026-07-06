@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import type { AuthPrincipal } from '../../identity/types/auth-principal.js';
+import type { AuthPrincipal } from '../../identity/domain/auth.types.js';
 import { AuthorizationService } from '../application/authorization.service.js';
 import { REQUIRED_PERMISSIONS_KEY } from './require-permissions.decorator.js';
 

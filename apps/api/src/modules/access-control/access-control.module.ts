@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 
-import { PrismaService } from '../../database/prisma.service.js';
 import { RedisModule } from '../infrastructure/redis/redis.module.js';
 import { AccessControlPolicyService } from './application/access-control-policy.service.js';
 import { AccessControlService } from './application/access-control.service.js';
@@ -14,7 +13,6 @@ import { UserAccessController } from './presentation/user-access.controller.js';
   imports: [RedisModule],
   controllers: [PermissionsController, RolesController, UserAccessController],
   providers: [
-    PrismaService,
     AuthorizationService,
     AccessControlService,
     AccessControlPolicyService,
