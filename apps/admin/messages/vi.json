@@ -14,13 +14,68 @@
         "users": "Số người dùng"
       },
       "create": "Tạo vai trò",
+      "description": "Tạo và quản lý các vai trò trong hệ thống",
       "empty": "Chưa có vai trò",
       "status": {
         "active": "Đang hoạt động",
         "inactive": "Ngừng hoạt động"
       },
       "tableLabel": "Danh sách vai trò",
-      "title": "Vai trò"
+      "title": "Vai trò",
+      "filters": {
+        "searchLabel": "Tìm kiếm vai trò",
+        "searchPlaceholder": "Tìm theo tên hoặc mã vai trò",
+        "all": "Tất cả",
+        "active": "Đang hoạt động",
+        "inactive": "Ngừng hoạt động"
+      },
+      "pagination": {
+        "summary": "Trang {page}/{totalPages} ({total} vai trò)",
+        "previous": "Trước",
+        "next": "Sau"
+      },
+      "deleteModal": {
+        "title": "Xóa vai trò",
+        "confirmation": "Bạn có chắc chắn muốn xóa \"{name}\"? Hành động này không thể hoàn tác.",
+        "cancel": "Hủy",
+        "confirm": "Xóa"
+      },
+      "form": {
+        "createTitle": "Tạo vai trò",
+        "editTitle": "Chỉnh sửa vai trò",
+        "cancel": "Hủy",
+        "save": "Lưu thay đổi",
+        "create": "Tạo vai trò",
+        "superAdminPermissionsNote": "Quyền của SUPER_ADMIN được quản lý tự động và không thể chỉnh sửa.",
+        "fields": {
+          "code": "Mã vai trò",
+          "name": "Tên vai trò",
+          "description": "Mô tả",
+          "isActive": "Đang hoạt động",
+          "permissions": "Quyền hạn"
+        },
+        "placeholders": {
+          "code": "ORDER_MANAGER",
+          "name": "Quản lý đơn hàng",
+          "description": "Mô tả mục đích của vai trò này"
+        },
+        "validation": {
+          "codeRequired": "Vui lòng nhập mã vai trò",
+          "codeInvalid": "Chỉ dùng chữ hoa, số và dấu gạch dưới",
+          "nameRequired": "Vui lòng nhập tên vai trò",
+          "nameTooLong": "Tên vai trò không được vượt quá 150 ký tự",
+          "descriptionTooLong": "Mô tả không được vượt quá 500 ký tự"
+        },
+        "permissions": {
+          "searchLabel": "Tìm kiếm quyền",
+          "searchPlaceholder": "Tìm theo mã, tên hoặc module",
+          "empty": "Không tìm thấy quyền nào",
+          "selectedCount": "Đã chọn {selected}/{total}",
+          "clearModule": "Bỏ chọn tất cả",
+          "selectModule": "Chọn tất cả",
+          "partiallySelected": "Một số quyền trong module này đã được chọn"
+        }
+      }
     },
     "title": "Quản lý phân quyền"
   },
@@ -97,9 +152,16 @@
     "NETWORK_ERROR": "Không thể kết nối đến máy chủ",
     "PERMISSION_CODE_ALREADY_EXISTS": "Mã quyền đã tồn tại",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "Bạn không thể cấp quyền cao hơn quyền hiện tại",
+    "PROTECTED_PERMISSION_ASSIGNMENT_FORBIDDEN": "Quyền này không thể được gán thủ công",
     "REFRESH_TOKEN_REQUIRED": "Không tìm thấy phiên đăng nhập",
     "REFRESH_TOKEN_REUSED": "Phát hiện refresh token đã được sử dụng lại",
     "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại",
+    "ROLE_IS_ASSIGNED_TO_USERS": "Vai trò này đang được gán cho một hoặc nhiều người dùng",
+    "ROLE_NOT_FOUND": "Không tìm thấy vai trò",
+    "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "Quyền của SUPER_ADMIN được quản lý tự động",
+    "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "Không thể tắt vai trò hệ thống",
+    "SYSTEM_ROLE_CANNOT_BE_DELETED": "Không thể xóa vai trò hệ thống",
+    "INVALID_PERMISSIONS": "Một hoặc nhiều quyền không hợp lệ",
     "USER_NOT_FOUND": "Tài khoản không còn tồn tại"
   }
 }

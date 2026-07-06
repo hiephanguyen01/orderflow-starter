@@ -17,6 +17,12 @@ import { PermissionsGuard } from '../guards/permissions.guard.js';
 export class PermissionsController {
   constructor(private readonly accessControlService: AccessControlService) {}
 
+  @Get('assignable')
+  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_READ])
+  listAssignablePermissions(@CurrentUser() user: AuthPrincipal) {
+    return this.accessControlService.listAssignablePermissions(user.userId);
+  }
+
   @Get()
   @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_READ])
   listPermissions() {

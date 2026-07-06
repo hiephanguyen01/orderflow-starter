@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../../../../identity/presentation/http/decorators/current-user.decorator.js';
@@ -8,7 +21,8 @@ import { AccessControlService } from '../../../application/access-control.servic
 import { ACCESS_CONTROL_PERMISSIONS } from '../../../domain/permission.constants.js';
 import { RequirePermissions } from '../decorators/require-permissions.decorator.js';
 import { CreateRoleDto } from '../dto/create-role.dto.js';
-import { ReplaceRolePermissionsDto } from '../dto/replace-role-permissions.dto.js';
+import { ListRolesQueryDto } from '../dto/list-roles-query.dto.js';
+import { UpdateRoleConfigurationDto } from '../dto/update-role-configuration.dto.js';
 import { PermissionsGuard } from '../guards/permissions.guard.js';
 
 @ApiTags('Admin Roles')
@@ -20,23 +34,45 @@ export class RolesController {
 
   @Get()
   @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_READ])
-  listRoles() {
-    return this.accessControlService.listRoles();
+  listRoles(@Query() query: ListRolesQueryDto) {
+    return this.accessControlService.listRoles(query);
+  }
+
+  @Get(':roleId')
+  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_READ])
+  getRoleById(@Param('roleId', new ParseUUIDPipe({ version: '4' })) roleId: string) {
+    return this.accessControlService.getRoleById(roleId);
   }
 
   @Post()
-  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_CREATE])
+  @RequirePermissions([
+    ACCESS_CONTROL_PERMISSIONS.ROLES_CREATE,
+    ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_ASSIGN,
+  ])
   createRole(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateRoleDto) {
     return this.accessControlService.createRole(user.userId, dto);
   }
 
-  @Put(':roleId/permissions')
-  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_ASSIGN])
-  replacePermissions(
+  @Put(':roleId/configuration')
+  @RequirePermissions([
+    ACCESS_CONTROL_PERMISSIONS.ROLES_UPDATE,
+    ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_ASSIGN,
+  ])
+  updateRoleConfiguration(
     @CurrentUser() user: AuthPrincipal,
     @Param('roleId', new ParseUUIDPipe({ version: '4' })) roleId: string,
-    @Body() dto: ReplaceRolePermissionsDto,
+    @Body() dto: UpdateRoleConfigurationDto,
   ) {
-    return this.accessControlService.replaceRolePermissions(user.userId, roleId, dto.permissionIds);
+    return this.accessControlService.updateRoleConfiguration(user.userId, roleId, dto);
+  }
+
+  @Delete(':roleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_DELETE])
+  async deleteRole(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('roleId', new ParseUUIDPipe({ version: '4' })) roleId: string,
+  ): Promise<void> {
+    await this.accessControlService.deleteRole(user.userId, roleId);
   }
 }

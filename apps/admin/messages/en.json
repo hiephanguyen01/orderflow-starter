@@ -14,13 +14,68 @@
         "users": "Users"
       },
       "create": "Create role",
+      "description": "Create and manage system roles",
       "empty": "No roles found",
       "status": {
         "active": "Active",
         "inactive": "Inactive"
       },
       "tableLabel": "Role list",
-      "title": "Roles"
+      "title": "Roles",
+      "filters": {
+        "searchLabel": "Search roles",
+        "searchPlaceholder": "Search by name or code",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "pagination": {
+        "summary": "Page {page} of {totalPages} ({total} roles)",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "deleteModal": {
+        "title": "Delete role",
+        "confirmation": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "form": {
+        "createTitle": "Create role",
+        "editTitle": "Edit role",
+        "cancel": "Cancel",
+        "save": "Save changes",
+        "create": "Create role",
+        "superAdminPermissionsNote": "SUPER_ADMIN permissions are managed automatically and cannot be edited.",
+        "fields": {
+          "code": "Role code",
+          "name": "Role name",
+          "description": "Description",
+          "isActive": "Active",
+          "permissions": "Permissions"
+        },
+        "placeholders": {
+          "code": "ORDER_MANAGER",
+          "name": "Order manager",
+          "description": "Describe what this role is for"
+        },
+        "validation": {
+          "codeRequired": "Role code is required",
+          "codeInvalid": "Use uppercase letters, numbers and underscores only",
+          "nameRequired": "Role name is required",
+          "nameTooLong": "Role name must not exceed 150 characters",
+          "descriptionTooLong": "Description must not exceed 500 characters"
+        },
+        "permissions": {
+          "searchLabel": "Search permissions",
+          "searchPlaceholder": "Search by code, name or module",
+          "empty": "No permissions found",
+          "selectedCount": "{selected} of {total} selected",
+          "clearModule": "Clear all",
+          "selectModule": "Select all",
+          "partiallySelected": "Some permissions in this module are selected"
+        }
+      }
     },
     "title": "Access control"
   },
@@ -97,9 +152,16 @@
     "NETWORK_ERROR": "Unable to connect to the server",
     "PERMISSION_CODE_ALREADY_EXISTS": "Permission code already exists",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "You cannot grant a permission higher than your current permission",
+    "PROTECTED_PERMISSION_ASSIGNMENT_FORBIDDEN": "This permission cannot be assigned manually",
     "REFRESH_TOKEN_REQUIRED": "No login session was found",
     "REFRESH_TOKEN_REUSED": "Detected refresh token has been reused",
     "ROLE_CODE_ALREADY_EXISTS": "Role code already exists",
+    "ROLE_IS_ASSIGNED_TO_USERS": "This role is assigned to one or more users",
+    "ROLE_NOT_FOUND": "Role not found",
+    "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "SUPER_ADMIN permissions are managed automatically",
+    "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "System roles cannot be deactivated",
+    "SYSTEM_ROLE_CANNOT_BE_DELETED": "System roles cannot be deleted",
+    "INVALID_PERMISSIONS": "One or more permissions are invalid",
     "USER_NOT_FOUND": "The account no longer exists"
   }
 }

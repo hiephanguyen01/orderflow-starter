@@ -7,9 +7,13 @@ import {
 
 import { Prisma, type PermissionEffect } from '../../../generated/prisma/client.js';
 import { PrismaService } from '../../../database/prisma/prisma.service.js';
+import { PaginatedResult } from '../../../shared/types/paginated-result.js';
+import { SYSTEM_PERMISSIONS } from '../domain/permission.constants.js';
 import { CreatePermissionDto } from '../presentation/http/dto/create-permission.dto.js';
 import { CreateRoleDto } from '../presentation/http/dto/create-role.dto.js';
+import { ListRolesQueryDto } from '../presentation/http/dto/list-roles-query.dto.js';
 import { DirectPermissionItemDto } from '../presentation/http/dto/replace-user-permissions.dto.js';
+import { UpdateRoleConfigurationDto } from '../presentation/http/dto/update-role-configuration.dto.js';
 import { AuthorizationPolicyService } from './authorization-policy.service.js';
 import { AuthorizationService } from './authorization.service.js';
 
@@ -33,6 +37,19 @@ type RoleResponse = {
   permissionIds: string[];
 };
 
+type RoleListItem = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  isActive: boolean;
+  userCount: number;
+  permissionCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class AccessControlService {
   constructor(
@@ -41,9 +58,98 @@ export class AccessControlService {
     private readonly policy: AuthorizationPolicyService,
   ) {}
 
-  async listRoles() {
-    return this.prisma.role.findMany({
-      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+  async listRoles(query: ListRolesQueryDto): Promise<PaginatedResult<RoleListItem>> {
+    const page = query.page;
+    const pageSize = query.pageSize;
+
+    const search = query.search?.trim() || undefined;
+
+    const where: Prisma.RoleWhereInput = {
+      ...(typeof query.isActive === 'boolean' ? { isActive: query.isActive } : {}),
+      ...(typeof query.isSystem === 'boolean' ? { isSystem: query.isSystem } : {}),
+      ...(search
+        ? {
+            OR: [
+              {
+                code: {
+                  contains: search.toUpperCase(),
+                  mode: 'insensitive',
+                },
+              },
+              {
+                name: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                description: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const skip = (page - 1) * pageSize;
+
+    const [roles, total] = await this.prisma.$transaction([
+      this.prisma.role.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: [{ isSystem: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+          isSystem: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              users: true,
+              permissions: true,
+            },
+          },
+        },
+      }),
+      this.prisma.role.count({ where }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return {
+      items: roles.map((role) => ({
+        id: role.id,
+        code: role.code,
+        name: role.name,
+        description: role.description,
+        isSystem: role.isSystem,
+        isActive: role.isActive,
+        userCount: role._count.users,
+        permissionCount: role._count.permissions,
+        createdAt: role.createdAt,
+        updatedAt: role.updatedAt,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages,
+      },
+    };
+  }
+
+  async getRoleById(roleId: string) {
+    const role = await this.prisma.role.findUnique({
+      where: {
+        id: roleId,
+      },
       select: {
         id: true,
         code: true,
@@ -53,12 +159,85 @@ export class AccessControlService {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        permissions: {
+          orderBy: {
+            permission: {
+              code: 'asc',
+            },
+          },
+          select: {
+            assignedAt: true,
+            permission: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                module: true,
+                description: true,
+                isSystem: true,
+                isActive: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             users: true,
-            permissions: true,
           },
         },
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException({
+        code: 'ROLE_NOT_FOUND',
+        message: 'Role not found',
+      });
+    }
+
+    return {
+      id: role.id,
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      isSystem: role.isSystem,
+      isActive: role.isActive,
+      userCount: role._count.users,
+      permissions: role.permissions.map(({ permission, assignedAt }) => ({
+        ...permission,
+        assignedAt,
+      })),
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
+    };
+  }
+
+  async listAssignablePermissions(actorId: string) {
+    const authorization = await this.authorizationService.getEffectiveAuthorization(actorId);
+
+    const codeFilter: Prisma.StringFilter = authorization.isSuperAdmin
+      ? {
+          not: SYSTEM_PERMISSIONS.SUPER_ADMIN,
+        }
+      : {
+          in: authorization.permissionCodes.filter(
+            (code) => code !== SYSTEM_PERMISSIONS.SUPER_ADMIN,
+          ),
+        };
+
+    return this.prisma.permission.findMany({
+      where: {
+        isActive: true,
+        code: codeFilter,
+      },
+      orderBy: [{ module: 'asc' }, { code: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        module: true,
+        description: true,
+        isSystem: true,
       },
     });
   }
@@ -296,11 +475,7 @@ export class AccessControlService {
     }
   }
 
-  async replaceRolePermissions(
-    actorId: string,
-    roleId: string,
-    permissionIds: string[],
-  ): Promise<{ roleId: string; permissionIds: string[] }> {
+  async updateRoleConfiguration(actorId: string, roleId: string, dto: UpdateRoleConfigurationDto) {
     const role = await this.prisma.role.findUnique({
       where: {
         id: roleId,
@@ -308,28 +483,53 @@ export class AccessControlService {
       select: {
         id: true,
         code: true,
+        name: true,
+        description: true,
+        isSystem: true,
+        isActive: true,
+        permissions: {
+          select: {
+            permissionId: true,
+          },
+        },
       },
     });
 
     if (!role) {
       throw new NotFoundException({
         code: 'ROLE_NOT_FOUND',
-        message: 'Role was not found',
+        message: 'Role not found',
       });
     }
 
-    if (role.code === 'SUPER_ADMIN') {
+    if (role.isSystem && !dto.isActive) {
+      throw new BadRequestException({
+        code: 'SYSTEM_ROLE_CANNOT_BE_DEACTIVATED',
+        message: 'System roles cannot be deactivated',
+      });
+    }
+
+    const uniquePermissionIds = [...new Set(dto.permissionIds)];
+
+    if (
+      role.code === 'SUPER_ADMIN' &&
+      !this.haveSameStringValues(
+        role.permissions.map(({ permissionId }) => permissionId),
+        uniquePermissionIds,
+      )
+    ) {
       throw new BadRequestException({
         code: 'SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED',
         message: 'SUPER_ADMIN permissions are managed automatically',
       });
     }
 
-    const uniquePermissionIds = [...new Set(permissionIds)];
-
     await this.assertActivePermissionsExist(uniquePermissionIds);
-    await this.policy.assertProtectedPermissionNotAssigned(uniquePermissionIds);
-    await this.policy.assertCanGrantPermissionIds(actorId, uniquePermissionIds);
+
+    if (role.code !== 'SUPER_ADMIN') {
+      await this.policy.assertProtectedPermissionNotAssigned(uniquePermissionIds);
+      await this.policy.assertCanGrantPermissionIds(actorId, uniquePermissionIds);
+    }
 
     const affectedUsers = await this.prisma.userRole.findMany({
       where: {
@@ -340,71 +540,157 @@ export class AccessControlService {
       },
     });
 
-    await this.prisma.$transaction(async (transaction) => {
-      const before = await transaction.rolePermission.findMany({
+    const previousPermissionIds = role.permissions.map(({ permissionId }) => permissionId);
+
+    const permissionsChanged = !this.haveSameStringValues(
+      previousPermissionIds,
+      uniquePermissionIds,
+    );
+
+    const activeStateChanged = role.isActive !== dto.isActive;
+
+    const updatedRole = await this.prisma.$transaction(async (transaction) => {
+      const result = await transaction.role.update({
         where: {
-          roleId,
+          id: roleId,
         },
-        select: {
-          permissionId: true,
+        data: {
+          name: dto.name.trim(),
+          description: this.normalizeOptionalText(dto.description ?? undefined),
+          isActive: dto.isActive,
         },
       });
 
-      await transaction.rolePermission.deleteMany({
-        where: {
-          roleId,
-        },
-      });
-
-      if (uniquePermissionIds.length > 0) {
-        await transaction.rolePermission.createMany({
-          data: uniquePermissionIds.map((permissionId) => ({
+      if (permissionsChanged && role.code !== 'SUPER_ADMIN') {
+        await transaction.rolePermission.deleteMany({
+          where: {
             roleId,
-            permissionId,
-            assignedById: actorId,
-          })),
+          },
         });
+
+        if (uniquePermissionIds.length > 0) {
+          await transaction.rolePermission.createMany({
+            data: uniquePermissionIds.map((permissionId) => ({
+              roleId,
+              permissionId,
+              assignedById: actorId,
+            })),
+          });
+        }
       }
 
-      const userIds = affectedUsers.map(({ userId }) => userId);
+      if (permissionsChanged || activeStateChanged) {
+        const userIds = affectedUsers.map(({ userId }) => userId);
 
-      if (userIds.length > 0) {
-        await transaction.user.updateMany({
-          where: {
-            id: {
-              in: userIds,
+        if (userIds.length > 0) {
+          await transaction.user.updateMany({
+            where: {
+              id: {
+                in: userIds,
+              },
             },
-          },
-          data: {
-            authorizationVersion: {
-              increment: 1,
+            data: {
+              authorizationVersion: {
+                increment: 1,
+              },
             },
-          },
-        });
+          });
+        }
       }
 
       await transaction.auditLog.create({
         data: {
           actorId,
-          action: 'ROLE_PERMISSIONS_REPLACED',
+          action: 'ROLE_CONFIGURATION_UPDATED',
           resourceType: 'ROLE',
           resourceId: roleId,
           beforeData: {
-            permissionIds: before.map(({ permissionId }) => permissionId),
+            name: role.name,
+            description: role.description,
+            isActive: role.isActive,
+            permissionIds: previousPermissionIds,
           },
           afterData: {
-            permissionIds: uniquePermissionIds,
+            name: result.name,
+            description: result.description,
+            isActive: result.isActive,
+            permissionIds:
+              role.code === 'SUPER_ADMIN' ? previousPermissionIds : uniquePermissionIds,
           },
         },
       });
+
+      return result;
     });
 
-    await this.authorizationService.invalidateUsers(affectedUsers.map(({ userId }) => userId));
+    if (permissionsChanged || activeStateChanged) {
+      await this.authorizationService.invalidateUsers(affectedUsers.map(({ userId }) => userId));
+    }
 
-    return {
-      roleId,
-      permissionIds: uniquePermissionIds,
-    };
+    return updatedRole;
+  }
+
+  async deleteRole(actorId: string, roleId: string): Promise<void> {
+    const role = await this.prisma.role.findUnique({
+      where: {
+        id: roleId,
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        isSystem: true,
+        _count: {
+          select: {
+            users: true,
+          },
+        },
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException({
+        code: 'ROLE_NOT_FOUND',
+        message: 'Role not found',
+      });
+    }
+
+    if (role.isSystem) {
+      throw new BadRequestException({
+        code: 'SYSTEM_ROLE_CANNOT_BE_DELETED',
+        message: 'System roles cannot be deleted',
+      });
+    }
+
+    if (role._count.users > 0) {
+      throw new ConflictException({
+        code: 'ROLE_IS_ASSIGNED_TO_USERS',
+        message: 'The role is assigned to one or more users',
+      });
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: 'ROLE_DELETED',
+          resourceType: 'ROLE',
+          resourceId: role.id,
+          beforeData: {
+            code: role.code,
+            name: role.name,
+            description: role.description,
+          },
+        },
+      });
+
+      await transaction.role.delete({
+        where: {
+          id: roleId,
+        },
+      });
+    });
   }
 
   async replaceUserRoles(
@@ -644,5 +930,15 @@ export class AccessControlService {
         message: 'Code already exists',
       });
     }
+  }
+
+  private haveSameStringValues(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) {
+      return false;
+    }
+
+    const leftSet = new Set(left);
+
+    return right.every((value) => leftSet.has(value));
   }
 }
