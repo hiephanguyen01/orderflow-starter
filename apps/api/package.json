@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "jiti prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.1.27",
@@ -50,6 +51,7 @@
     "eslint-config-prettier": "10.1.5",
     "eslint-plugin-prettier": "5.5.1",
     "globals": "16.2.0",
+    "jiti": "2.7.0",
     "prettier": "3.6.2",
     "prisma": "7.8.0",
     "ts-loader": "9.5.2",
