@@ -24,15 +24,82 @@
     },
     "title": "Access control"
   },
+  "AdminDashboard": {
+    "title": "Administration",
+    "welcome": "Welcome, {name}",
+    "email": "Email",
+    "status": "Status",
+    "logout": "Sign out"
+  },
+  "AdminHeader": {
+    "title": "OrderFlow Admin",
+    "description": "Manage and operate the platform",
+    "logout": "Sign out"
+  },
+  "Auth": {
+    "login": {
+      "title": "Admin login",
+      "description": "Sign in to access the OrderFlow administration system",
+      "fields": {
+        "email": "Email",
+        "password": "Password"
+      },
+      "placeholders": {
+        "email": "admin@orderflow.local",
+        "password": "Enter your password"
+      },
+      "validation": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Enter a valid email address",
+        "passwordRequired": "Password is required",
+        "passwordTooLong": "Password must not exceed 128 characters"
+      },
+      "submit": "Sign in",
+      "submitting": "Signing in..."
+    }
+  },
+  "Common": {
+    "loading": "Loading..."
+  },
+  "Forbidden": {
+    "title": "Access denied",
+    "description": "Your account does not have permission to view this content.",
+    "help": "Contact an administrator if you believe you require access.",
+    "backToDashboard": "Back to Dashboard"
+  },
+  "Navigation": {
+    "adminPortal": "Administration portal",
+    "ariaLabel": "Administration navigation",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "groups": {
+      "general": "Overview",
+      "accessControl": "Access control",
+      "security": "Security"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "userAccess": "User access",
+      "auditLogs": "Audit logs",
+      "sessions": "Login sessions"
+    }
+  },
   "Errors": {
     "ACCOUNT_NOT_ACTIVE": "Account is not active",
     "EMAIL_ALREADY_EXISTS": "Email already exists",
     "INSUFFICIENT_PERMISSIONS": "You do not have permission to perform this action",
+    "INVALID_ACCESS_TOKEN": "The login session is invalid",
     "INVALID_CREDENTIALS": "Invalid email or password",
+    "INVALID_REFRESH_TOKEN": "The login session has expired",
     "INVALID_SESSION": "Invalid login session",
+    "NETWORK_ERROR": "Unable to connect to the server",
     "PERMISSION_CODE_ALREADY_EXISTS": "Permission code already exists",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "You cannot grant a permission higher than your current permission",
+    "REFRESH_TOKEN_REQUIRED": "No login session was found",
     "REFRESH_TOKEN_REUSED": "Detected refresh token has been reused",
-    "ROLE_CODE_ALREADY_EXISTS": "Role code already exists"
+    "ROLE_CODE_ALREADY_EXISTS": "Role code already exists",
+    "USER_NOT_FOUND": "The account no longer exists"
   }
 }

@@ -12,6 +12,7 @@
   "dependencies": {
     "@heroui/react": "3.2.1",
     "@heroui/styles": "3.2.1",
+    "@hookform/resolvers": "^5.4.0",
     "@orderflow/api-client": "workspace:*",
     "@orderflow/shared-types": "workspace:*",
     "@orderflow/ui": "workspace:*",

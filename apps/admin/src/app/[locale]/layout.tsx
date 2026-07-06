@@ -3,7 +3,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { routing } from '@/i18n/routing';
-import { AppProviders } from './providers';
+import { AppProviders } from '@/providers/app-providers';
 import '../globals.css';
 
 export function generateStaticParams() {

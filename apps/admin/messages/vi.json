@@ -24,15 +24,82 @@
     },
     "title": "Quản lý phân quyền"
   },
+  "AdminDashboard": {
+    "title": "Trang quản trị",
+    "welcome": "Xin chào, {name}",
+    "email": "Email",
+    "status": "Trạng thái",
+    "logout": "Đăng xuất"
+  },
+  "AdminHeader": {
+    "title": "OrderFlow Admin",
+    "description": "Quản lý và vận hành hệ thống",
+    "logout": "Đăng xuất"
+  },
+  "Auth": {
+    "login": {
+      "title": "Đăng nhập quản trị",
+      "description": "Đăng nhập để truy cập hệ thống quản trị OrderFlow",
+      "fields": {
+        "email": "Email",
+        "password": "Mật khẩu"
+      },
+      "placeholders": {
+        "email": "admin@orderflow.local",
+        "password": "Nhập mật khẩu"
+      },
+      "validation": {
+        "emailRequired": "Vui lòng nhập email",
+        "emailInvalid": "Email không hợp lệ",
+        "passwordRequired": "Vui lòng nhập mật khẩu",
+        "passwordTooLong": "Mật khẩu không được vượt quá 128 ký tự"
+      },
+      "submit": "Đăng nhập",
+      "submitting": "Đang đăng nhập..."
+    }
+  },
+  "Common": {
+    "loading": "Đang tải..."
+  },
+  "Forbidden": {
+    "title": "Bạn không có quyền truy cập",
+    "description": "Tài khoản hiện tại không có quyền xem nội dung này.",
+    "help": "Liên hệ quản trị viên nếu bạn cho rằng mình cần được cấp quyền.",
+    "backToDashboard": "Quay về Dashboard"
+  },
+  "Navigation": {
+    "adminPortal": "Cổng quản trị",
+    "ariaLabel": "Điều hướng quản trị",
+    "menu": "Menu",
+    "openMenu": "Mở menu",
+    "groups": {
+      "general": "Tổng quan",
+      "accessControl": "Phân quyền",
+      "security": "Bảo mật"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "roles": "Vai trò",
+      "permissions": "Quyền hạn",
+      "userAccess": "Phân quyền người dùng",
+      "auditLogs": "Nhật ký hệ thống",
+      "sessions": "Phiên đăng nhập"
+    }
+  },
   "Errors": {
     "ACCOUNT_NOT_ACTIVE": "Tài khoản không hoạt động",
     "EMAIL_ALREADY_EXISTS": "Email đã tồn tại",
     "INSUFFICIENT_PERMISSIONS": "Bạn không có quyền thực hiện thao tác này",
+    "INVALID_ACCESS_TOKEN": "Phiên đăng nhập không hợp lệ",
     "INVALID_CREDENTIALS": "Email hoặc mật khẩu không chính xác",
+    "INVALID_REFRESH_TOKEN": "Phiên đăng nhập đã hết hạn",
     "INVALID_SESSION": "Phiên đăng nhập không hợp lệ",
+    "NETWORK_ERROR": "Không thể kết nối đến máy chủ",
     "PERMISSION_CODE_ALREADY_EXISTS": "Mã quyền đã tồn tại",
     "PRIVILEGE_ESCALATION_FORBIDDEN": "Bạn không thể cấp quyền cao hơn quyền hiện tại",
+    "REFRESH_TOKEN_REQUIRED": "Không tìm thấy phiên đăng nhập",
     "REFRESH_TOKEN_REUSED": "Phát hiện refresh token đã được sử dụng lại",
-    "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại"
+    "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại",
+    "USER_NOT_FOUND": "Tài khoản không còn tồn tại"
   }
 }

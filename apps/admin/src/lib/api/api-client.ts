@@ -1,63 +1,128 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 
-let accessToken: string | null = null;
-let refreshPromise: Promise<string> | null = null;
+import {
+  clearAccessToken,
+  getAccessToken,
+  notifyAuthorizationChanged,
+  notifySessionExpired,
+  setAccessToken,
+} from './auth-session';
 
-export const setAccessToken = (token: string | null): void => {
-  accessToken = token;
+type RefreshResponse = {
+  accessToken: string;
+  accessTokenExpiresInSeconds: number;
 };
 
-export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1',
-  withCredentials: true,
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _authRetry?: boolean;
+};
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('NEXT_PUBLIC_API_URL is required');
+}
+
+export const publicApiClient = axios.create({
+  baseURL: apiBaseUrl,
   timeout: 15_000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+export const apiClient = axios.create({
+  baseURL: apiBaseUrl,
+  timeout: 15_000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+let refreshPromise: Promise<string> | null = null;
+
+function isAuthenticationEndpoint(url: string | undefined): boolean {
+  if (!url) {
+    return false;
   }
+
+  return ['/auth/login', '/auth/register', '/auth/refresh'].some((endpoint) =>
+    url.includes(endpoint),
+  );
+}
+
+async function performRefresh(): Promise<string> {
+  const { data } = await publicApiClient.post<RefreshResponse>('/auth/refresh');
+
+  setAccessToken(data.accessToken);
+
+  return data.accessToken;
+}
+
+export function refreshAccessToken(): Promise<string> {
+  refreshPromise ??= performRefresh().finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = getAccessToken();
+
+  if (!token) {
+    return config;
+  }
+
+  const headers = AxiosHeaders.from(config.headers);
+
+  headers.set('Authorization', `Bearer ${token}`);
+
+  config.headers = headers;
 
   return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
+
   async (error: AxiosError) => {
-    const originalRequest = error.config as
-      | (InternalAxiosRequestConfig & {
-          _retried?: boolean;
-        })
-      | undefined;
+    if (error.response?.status === 403) {
+      notifyAuthorizationChanged();
+
+      return Promise.reject(error);
+    }
+
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
 
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
-      originalRequest._retried ||
-      originalRequest.url?.includes('/auth/refresh')
+      originalRequest._authRetry ||
+      isAuthenticationEndpoint(originalRequest.url)
     ) {
       return Promise.reject(error);
     }
 
-    originalRequest._retried = true;
+    originalRequest._authRetry = true;
 
-    refreshPromise ??= apiClient
-      .post<{
-        accessToken: string;
-      }>('/auth/refresh')
-      .then(({ data }) => {
-        setAccessToken(data.accessToken);
+    try {
+      const nextAccessToken = await refreshAccessToken();
 
-        return data.accessToken;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
+      const headers = AxiosHeaders.from(originalRequest.headers);
 
-    const nextAccessToken = await refreshPromise;
+      headers.set('Authorization', `Bearer ${nextAccessToken}`);
 
-    originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
+      originalRequest.headers = headers;
 
-    return apiClient(originalRequest);
+      return apiClient(originalRequest);
+    } catch {
+      clearAccessToken();
+      notifySessionExpired();
+
+      return Promise.reject(error);
+    }
   },
 );

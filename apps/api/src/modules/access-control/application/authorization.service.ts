@@ -8,6 +8,7 @@ import { SYSTEM_PERMISSIONS } from '../domain/permission.constants.js';
 export type EffectiveAuthorization = {
   permissionCodes: string[];
   isSuperAdmin: boolean;
+  authorizationVersion: number;
 };
 
 @Injectable()
@@ -39,6 +40,7 @@ export class AuthorizationService {
       },
       select: {
         status: true,
+        authorizationVersion: true,
         userRoles: {
           where: {
             role: {
@@ -89,6 +91,7 @@ export class AuthorizationService {
       return {
         permissionCodes: [],
         isSuperAdmin: false,
+        authorizationVersion: 0,
       };
     }
 
@@ -120,6 +123,7 @@ export class AuthorizationService {
     const result: EffectiveAuthorization = {
       permissionCodes,
       isSuperAdmin: allowed.has(SYSTEM_PERMISSIONS.SUPER_ADMIN),
+      authorizationVersion: user.authorizationVersion,
     };
 
     await this.writeCache(cacheKey, result);
@@ -199,7 +203,7 @@ export class AuthorizationService {
   }
 
   private getUserCacheKey(userId: string): string {
-    return `authorization:user:${userId}:permissions`;
+    return `authorization:v1:user:${userId}`;
   }
 
   private async readCache(key: string): Promise<EffectiveAuthorization | null> {
@@ -216,7 +220,8 @@ export class AuthorizationService {
         typeof parsed === 'object' &&
         parsed !== null &&
         Array.isArray((parsed as EffectiveAuthorization).permissionCodes) &&
-        typeof (parsed as EffectiveAuthorization).isSuperAdmin === 'boolean'
+        typeof (parsed as EffectiveAuthorization).isSuperAdmin === 'boolean' &&
+        typeof (parsed as EffectiveAuthorization).authorizationVersion === 'number'
       ) {
         return parsed as EffectiveAuthorization;
       }
