@@ -9,11 +9,12 @@
     "start": "node dist/main.js",
     "lint": "eslint src prisma.config.ts",
     "typecheck": "tsc --noEmit",
+     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
-    "db:migrate": "prisma migrate deploy",
-    "db:studio": "prisma studio",
-    "db:seed": "jiti prisma/seed.ts"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "11.1.27",

@@ -1,159 +1,236 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as argon2 from 'argon2';
 import { config } from 'dotenv';
+import { fileURLToPath } from 'node:url';
 
+import { permissionDefinitions } from 'src/database/prisma/seed-data.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
-config({ path: '../../.env' });
-config();
-
-const permissionDefinitions = [
-  { code: 'system.super-admin', name: 'Super administrator', module: 'system' },
-  { code: 'roles.read', name: 'Xem vai trò', module: 'access-control' },
-  { code: 'roles.create', name: 'Tạo vai trò', module: 'access-control' },
-  { code: 'roles.update', name: 'Cập nhật vai trò', module: 'access-control' },
-  { code: 'roles.delete', name: 'Xóa vai trò', module: 'access-control' },
-  { code: 'roles.assign', name: 'Gán vai trò', module: 'access-control' },
-  { code: 'permissions.read', name: 'Xem quyền', module: 'access-control' },
-  { code: 'permissions.create', name: 'Tạo quyền', module: 'access-control' },
-  { code: 'permissions.update', name: 'Cập nhật quyền', module: 'access-control' },
-  { code: 'permissions.delete', name: 'Xóa quyền', module: 'access-control' },
-  { code: 'permissions.assign', name: 'Gán quyền', module: 'access-control' },
-  { code: 'users.read', name: 'Xem người dùng', module: 'users' },
-  { code: 'users.manage-access', name: 'Quản lý quyền người dùng', module: 'users' },
-  { code: 'audit-logs.read', name: 'Xem audit log', module: 'audit' },
-] as const;
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required');
-}
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({
-    connectionString: databaseUrl,
-  }),
+config({
+  path: fileURLToPath(new URL('../../../.env', import.meta.url)),
 });
 
-async function main(): Promise<void> {
+function requireEnvironment(name: string): string {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+
+  return value;
+}
+
+const databaseUrl = requireEnvironment('DATABASE_URL');
+
+const adapter = new PrismaPg({
+  connectionString: databaseUrl,
+});
+
+const prisma = new PrismaClient({
+  adapter,
+});
+
+async function seedPermissions() {
+  const permissions = [];
+
   for (const definition of permissionDefinitions) {
-    await prisma.permission.upsert({
+    const permission = await prisma.permission.upsert({
       where: {
         code: definition.code,
       },
+
+      create: {
+        code: definition.code,
+        name: definition.name,
+        module: definition.module,
+        description: definition.description,
+        isSystem: definition.isSystem ?? true,
+        isActive: true,
+      },
+
       update: {
         name: definition.name,
         module: definition.module,
-        isSystem: true,
-        isActive: true,
-      },
-      create: {
-        ...definition,
-        isSystem: true,
-        isActive: true,
+        description: definition.description,
+        isSystem: definition.isSystem ?? true,
       },
     });
+
+    permissions.push(permission);
   }
 
-  const permissions = await prisma.permission.findMany({
-    select: {
-      id: true,
-    },
-  });
+  return permissions;
+}
 
+async function seedSystemRoles() {
   const superAdminRole = await prisma.role.upsert({
     where: {
       code: 'SUPER_ADMIN',
     },
-    update: {
-      name: 'Super administrator',
-      isSystem: true,
-      isActive: true,
-    },
+
     create: {
       code: 'SUPER_ADMIN',
-      name: 'Super administrator',
+      name: 'Super Administrator',
+      description: 'Protected role with unrestricted system access.',
       isSystem: true,
       isActive: true,
     },
-    select: {
-      id: true,
+
+    update: {
+      name: 'Super Administrator',
+      description: 'Protected role with unrestricted system access.',
+      isSystem: true,
+      isActive: true,
     },
   });
 
-  await prisma.rolePermission.createMany({
-    data: permissions.map(({ id }) => ({
-      roleId: superAdminRole.id,
-      permissionId: id,
-    })),
-    skipDuplicates: true,
-  });
-
-  await prisma.role.upsert({
+  const customerRole = await prisma.role.upsert({
     where: {
       code: 'CUSTOMER',
     },
-    update: {
-      name: 'Customer',
-      isSystem: true,
-      isActive: true,
-    },
+
     create: {
       code: 'CUSTOMER',
       name: 'Customer',
+      description: 'Default role assigned to registered customers.',
       isSystem: true,
       isActive: true,
     },
+
+    update: {
+      name: 'Customer',
+      description: 'Default role assigned to registered customers.',
+      isSystem: true,
+    },
   });
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  return {
+    superAdminRole,
+    customerRole,
+  };
+}
 
-  if (!adminEmail || !adminPassword) {
-    throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are required');
+async function assignSuperAdminPermissions(roleId: string, permissionIds: string[]): Promise<void> {
+  await prisma.$transaction(async (transaction) => {
+    await transaction.rolePermission.deleteMany({
+      where: {
+        roleId,
+      },
+    });
+
+    await transaction.rolePermission.createMany({
+      data: permissionIds.map((permissionId) => ({
+        roleId,
+        permissionId,
+      })),
+
+      skipDuplicates: true,
+    });
+  });
+}
+
+async function seedInitialAdministrator(superAdminRoleId: string): Promise<void> {
+  const email = requireEnvironment('INITIAL_ADMIN_EMAIL').toLowerCase();
+
+  const password = requireEnvironment('INITIAL_ADMIN_PASSWORD');
+
+  const displayName =
+    process.env['INITIAL_ADMIN_DISPLAY_NAME']?.trim() || 'OrderFlow Administrator';
+
+  if (password.length < 12) {
+    throw new Error('INITIAL_ADMIN_PASSWORD must contain at least 12 characters');
   }
 
-  const passwordHash = await argon2.hash(adminPassword, {
-    type: argon2.argon2id,
-    memoryCost: 19_456,
-    timeCost: 2,
-    parallelism: 1,
-  });
+  if (process.env['NODE_ENV'] === 'production' && password === 'ChangeThisPassword123!') {
+    throw new Error('Default administrator password cannot be used in production');
+  }
 
-  const admin = await prisma.user.upsert({
+  let administrator = await prisma.user.findUnique({
     where: {
-      email: adminEmail,
-    },
-    update: {
-      passwordHash,
-      displayName: process.env.SEED_ADMIN_DISPLAY_NAME?.trim() || 'Super Admin',
-      status: 'ACTIVE',
-    },
-    create: {
-      email: adminEmail,
-      passwordHash,
-      displayName: process.env.SEED_ADMIN_DISPLAY_NAME?.trim() || 'Super Admin',
-      status: 'ACTIVE',
-    },
-    select: {
-      id: true,
+      email,
     },
   });
 
-  await prisma.userRole.createMany({
-    data: [
-      {
-        userId: admin.id,
-        roleId: superAdminRole.id,
+  if (!administrator) {
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1,
+    });
+
+    administrator = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName,
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
       },
-    ],
-    skipDuplicates: true,
+    });
+
+    console.info(`Created initial administrator: ${email}`);
+  } else {
+    console.info(`Initial administrator already exists: ${email}`);
+  }
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: administrator.id,
+        roleId: superAdminRoleId,
+      },
+    },
+
+    create: {
+      userId: administrator.id,
+      roleId: superAdminRoleId,
+    },
+
+    update: {},
   });
 }
 
-try {
-  await main();
-} finally {
-  await prisma.$disconnect();
+async function createSeedAuditLog(metadata: Record<string, unknown>): Promise<void> {
+  await prisma.auditLog.create({
+    data: {
+      actorId: null,
+      action: 'SYSTEM_SEED_COMPLETED',
+      resourceType: 'SYSTEM',
+      resourceId: 'identity-rbac',
+      metadata,
+    },
+  });
 }
+
+async function main(): Promise<void> {
+  console.info('Starting OrderFlow database seed...');
+
+  const permissions = await seedPermissions();
+
+  const { superAdminRole, customerRole } = await seedSystemRoles();
+
+  await assignSuperAdminPermissions(
+    superAdminRole.id,
+    permissions.map((permission) => permission.id),
+  );
+
+  await seedInitialAdministrator(superAdminRole.id);
+
+  await createSeedAuditLog({
+    permissionCount: permissions.length,
+    roles: [superAdminRole.code, customerRole.code],
+  });
+
+  console.info('OrderFlow database seed completed.');
+}
+
+main()
+  .catch((error: unknown) => {
+    console.error('Database seed failed:', error);
+
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
