@@ -29,12 +29,14 @@ export class UserAccessController {
     [ACCESS_CONTROL_PERMISSIONS.USERS_MANAGE_ACCESS, ACCESS_CONTROL_PERMISSIONS.ROLES_ASSIGN],
     'ALL',
   )
-  replaceUserRoles(
+  async replaceUserRoles(
     @CurrentUser() user: AuthPrincipal,
     @Param('userId', new ParseUUIDPipe({ version: '4' })) userId: string,
     @Body() dto: ReplaceUserRolesDto,
   ) {
-    return this.accessControlService.replaceUserRoles(user.userId, userId, dto.roleIds);
+    await this.accessControlService.replaceUserRoles(user.userId, userId, dto.roleIds);
+
+    return { success: true };
   }
 
   @Put(':userId/permissions')
@@ -42,11 +44,13 @@ export class UserAccessController {
     [ACCESS_CONTROL_PERMISSIONS.USERS_MANAGE_ACCESS, ACCESS_CONTROL_PERMISSIONS.PERMISSIONS_ASSIGN],
     'ALL',
   )
-  replaceUserPermissions(
+  async replaceUserPermissions(
     @CurrentUser() user: AuthPrincipal,
     @Param('userId', new ParseUUIDPipe({ version: '4' })) userId: string,
     @Body() dto: ReplaceUserPermissionsDto,
   ) {
-    return this.accessControlService.replaceUserPermissions(user.userId, userId, dto.permissions);
+    await this.accessControlService.replaceUserPermissions(user.userId, userId, dto.permissions);
+
+    return { success: true };
   }
 }

@@ -165,6 +165,97 @@
         }
       }
     },
+    "users": {
+      "title": "Phân quyền người dùng",
+      "description": "Quản lý vai trò và quyền trực tiếp của người dùng",
+      "tableLabel": "Danh sách người dùng",
+      "loading": "Đang tải...",
+      "empty": "Không tìm thấy người dùng nào",
+      "noRoles": "Chưa có vai trò",
+      "superAdmin": "Super admin",
+      "columns": {
+        "user": "Người dùng",
+        "roles": "Vai trò",
+        "directPermissions": "Quyền trực tiếp",
+        "sessions": "Phiên đang hoạt động",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "status": {
+        "ACTIVE": "Đang hoạt động",
+        "INACTIVE": "Ngừng hoạt động",
+        "BLOCKED": "Bị chặn"
+      },
+      "actions": {
+        "manage": "Quản lý"
+      },
+      "filters": {
+        "searchLabel": "Tìm kiếm người dùng",
+        "searchPlaceholder": "Tìm theo email hoặc tên hiển thị",
+        "statusValues": {
+          "ALL": "Tất cả",
+          "ACTIVE": "Đang hoạt động",
+          "INACTIVE": "Ngừng hoạt động",
+          "BLOCKED": "Bị chặn"
+        }
+      },
+      "pagination": {
+        "summary": "Trang {page}/{totalPages} ({total} người dùng)",
+        "previous": "Trước",
+        "next": "Sau"
+      },
+      "summary": {
+        "status": {
+          "ACTIVE": "Đang hoạt động",
+          "INACTIVE": "Ngừng hoạt động",
+          "BLOCKED": "Bị chặn"
+        },
+        "superAdmin": "Super administrator",
+        "authorizationVersion": "Phiên bản phân quyền {version}"
+      },
+      "roles": {
+        "title": "Vai trò đã gán",
+        "manage": "Quản lý vai trò",
+        "empty": "Chưa gán vai trò nào",
+        "cancel": "Hủy",
+        "save": "Lưu thay đổi"
+      },
+      "directPermissions": {
+        "title": "Quyền trực tiếp",
+        "manage": "Quản lý quyền trực tiếp",
+        "empty": "Chưa có quyền trực tiếp nào",
+        "superAdminNotice": "Quyền trực tiếp không áp dụng cho super administrator.",
+        "searchLabel": "Tìm kiếm quyền",
+        "searchPlaceholder": "Tìm theo mã, tên hoặc module",
+        "cancel": "Hủy",
+        "save": "Lưu thay đổi",
+        "effect": {
+          "ALLOW": "Cho phép",
+          "DENY": "Từ chối",
+          "NONE": "Không đặt"
+        }
+      },
+      "effectivePermissions": {
+        "title": "Quyền hiệu lực",
+        "description": "Quyền mà người dùng thực sự có, sau khi kết hợp vai trò và ghi đè trực tiếp",
+        "tableLabel": "Quyền hiệu lực",
+        "empty": "Không có quyền hiệu lực",
+        "noRoleSource": "Không có nguồn vai trò",
+        "effectiveYes": "Có hiệu lực",
+        "effectiveNo": "Không có hiệu lực",
+        "columns": {
+          "permission": "Quyền hạn",
+          "source": "Nguồn vai trò",
+          "directEffect": "Ghi đè trực tiếp",
+          "effective": "Hiệu lực"
+        },
+        "effect": {
+          "ALLOW": "Cho phép",
+          "DENY": "Từ chối",
+          "NONE": "Không đặt"
+        }
+      }
+    },
     "title": "Quản lý phân quyền"
   },
   "AdminDashboard": {
@@ -236,7 +327,9 @@
     "INVALID_ACCESS_TOKEN": "Phiên đăng nhập không hợp lệ",
     "INVALID_CREDENTIALS": "Email hoặc mật khẩu không chính xác",
     "INVALID_REFRESH_TOKEN": "Phiên đăng nhập đã hết hạn",
+    "INVALID_ROLES": "Một hoặc nhiều vai trò không tồn tại hoặc không còn hoạt động",
     "INVALID_SESSION": "Phiên đăng nhập không hợp lệ",
+    "LAST_SUPER_ADMIN_CANNOT_BE_REMOVED": "Không thể gỡ super administrator cuối cùng đang hoạt động",
     "NETWORK_ERROR": "Không thể kết nối đến máy chủ",
     "PERMISSION_CODE_ALREADY_EXISTS": "Mã quyền đã tồn tại",
     "PERMISSION_IS_ASSIGNED": "Quyền này đang được gán cho một hoặc nhiều vai trò hoặc người dùng",
@@ -249,11 +342,15 @@
     "ROLE_CODE_ALREADY_EXISTS": "Mã vai trò đã tồn tại",
     "ROLE_IS_ASSIGNED_TO_USERS": "Vai trò này đang được gán cho một hoặc nhiều người dùng",
     "ROLE_NOT_FOUND": "Không tìm thấy vai trò",
+    "SELF_ACCESS_CHANGE_FORBIDDEN": "Bạn không thể thay đổi quyền của chính mình",
+    "SUPER_ADMIN_ASSIGNMENT_FORBIDDEN": "Chỉ super administrator mới có thể gán vai trò SUPER_ADMIN",
+    "SUPER_ADMIN_DIRECT_PERMISSIONS_NOT_ALLOWED": "Quyền trực tiếp không áp dụng cho super administrator",
     "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "Quyền của SUPER_ADMIN được quản lý tự động",
     "SYSTEM_PERMISSION_CANNOT_BE_DELETED": "Không thể xóa quyền hạn hệ thống",
     "SYSTEM_PERMISSION_CANNOT_BE_MODIFIED": "Không thể chỉnh sửa quyền hạn hệ thống",
     "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "Không thể tắt vai trò hệ thống",
     "SYSTEM_ROLE_CANNOT_BE_DELETED": "Không thể xóa vai trò hệ thống",
+    "DUPLICATE_USER_PERMISSIONS": "Mỗi quyền chỉ được cấu hình một lần cho mỗi người dùng",
     "INVALID_PERMISSIONS": "Một hoặc nhiều quyền không hợp lệ",
     "USER_NOT_FOUND": "Tài khoản không còn tồn tại"
   }

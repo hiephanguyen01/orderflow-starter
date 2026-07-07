@@ -7,14 +7,16 @@ import { CurrentAuthorizationController } from './presentation/http/controllers/
 import { PermissionsController } from './presentation/http/controllers/permissions.controller.js';
 import { RolesController } from './presentation/http/controllers/roles.controller.js';
 import { UserAccessController } from './presentation/http/controllers/user-access.controller.js';
+import { UsersController } from './presentation/http/controllers/users.controller.js';
 import { PermissionsGuard } from './presentation/http/guards/permissions.guard.js';
 
 @Module({
   controllers: [
     CurrentAuthorizationController,
+    UsersController,
+    UserAccessController,
     RolesController,
     PermissionsController,
-    UserAccessController,
   ],
   providers: [
     AuthorizationService,

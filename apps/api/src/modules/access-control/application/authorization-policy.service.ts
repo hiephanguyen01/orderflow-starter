@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../database/prisma/prisma.service.js';
 import { SYSTEM_PERMISSIONS } from '../domain/permission.constants.js';
@@ -45,36 +45,83 @@ export class AuthorizationPolicyService {
     }
   }
 
-  async assertCanAssignRoles(actorId: string, roleIds: string[]): Promise<void> {
+  async assertCanAssignRoleIds(actorId: string, roleIds: string[]): Promise<void> {
     if (roleIds.length === 0) {
-      return;
-    }
-
-    const rolePermissions = await this.prisma.rolePermission.findMany({
-      where: {
-        roleId: {
-          in: roleIds,
-        },
-      },
-      select: {
-        permissionId: true,
-      },
-    });
-
-    await this.assertCanGrantPermissionIds(
-      actorId,
-      rolePermissions.map(({ permissionId }) => permissionId),
-    );
-  }
-
-  async assertCanModifyTargetUser(actorId: string, targetUserId: string): Promise<void> {
-    if (actorId !== targetUserId) {
       return;
     }
 
     const actorAuthorization = await this.authorizationService.getEffectiveAuthorization(actorId);
 
+    const roles = await this.prisma.role.findMany({
+      where: {
+        id: {
+          in: roleIds,
+        },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        code: true,
+        permissions: {
+          where: {
+            permission: {
+              isActive: true,
+            },
+          },
+          select: {
+            permission: {
+              select: {
+                code: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (roles.length !== roleIds.length) {
+      throw new BadRequestException({
+        code: 'INVALID_ROLES',
+        message: 'One or more roles do not exist or are inactive',
+      });
+    }
+
+    const assignsSuperAdmin = roles.some((role) => role.code === 'SUPER_ADMIN');
+
+    if (assignsSuperAdmin && !actorAuthorization.isSuperAdmin) {
+      throw new ForbiddenException({
+        code: 'SUPER_ADMIN_ASSIGNMENT_FORBIDDEN',
+        message: 'Only a super administrator can assign the SUPER_ADMIN role',
+      });
+    }
+
     if (actorAuthorization.isSuperAdmin) {
+      return;
+    }
+
+    const actorPermissionSet = new Set(actorAuthorization.permissionCodes);
+
+    const unauthorizedCodes = [
+      ...new Set(
+        roles.flatMap((role) =>
+          role.permissions
+            .map(({ permission }) => permission.code)
+            .filter((code) => !actorPermissionSet.has(code)),
+        ),
+      ),
+    ];
+
+    if (unauthorizedCodes.length > 0) {
+      throw new ForbiddenException({
+        code: 'PRIVILEGE_ESCALATION_FORBIDDEN',
+        message: 'You cannot assign roles containing permissions that you do not have',
+        permissions: unauthorizedCodes,
+      });
+    }
+  }
+
+  assertCanModifyTargetUser(actorId: string, targetUserId: string): void {
+    if (actorId !== targetUserId) {
       return;
     }
 
@@ -163,5 +210,25 @@ export class AuthorizationPolicyService {
     const authorization = await this.authorizationService.getEffectiveAuthorization(actorId);
 
     return authorization.isSuperAdmin;
+  }
+
+  async isSuperAdminUser(userId: string): Promise<boolean> {
+    const assignment = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        role: {
+          code: 'SUPER_ADMIN',
+          isActive: true,
+        },
+        user: {
+          status: 'ACTIVE',
+        },
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    return Boolean(assignment);
   }
 }

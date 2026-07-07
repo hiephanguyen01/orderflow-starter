@@ -38,6 +38,12 @@ export class RolesController {
     return this.accessControlService.listRoles(query);
   }
 
+  @Get('assignable')
+  @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_READ])
+  listAssignableRoles(@CurrentUser() user: AuthPrincipal) {
+    return this.accessControlService.listAssignableRoles(user.userId);
+  }
+
   @Get(':roleId')
   @RequirePermissions([ACCESS_CONTROL_PERMISSIONS.ROLES_READ])
   getRoleById(@Param('roleId', new ParseUUIDPipe({ version: '4' })) roleId: string) {

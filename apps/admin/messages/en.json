@@ -165,6 +165,97 @@
         }
       }
     },
+    "users": {
+      "title": "User access",
+      "description": "Manage user roles and direct permission overrides",
+      "tableLabel": "User list",
+      "loading": "Loading...",
+      "empty": "No users found",
+      "noRoles": "No roles",
+      "superAdmin": "Super admin",
+      "columns": {
+        "user": "User",
+        "roles": "Roles",
+        "directPermissions": "Direct permissions",
+        "sessions": "Active sessions",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive",
+        "BLOCKED": "Blocked"
+      },
+      "actions": {
+        "manage": "Manage"
+      },
+      "filters": {
+        "searchLabel": "Search users",
+        "searchPlaceholder": "Search by email or display name",
+        "statusValues": {
+          "ALL": "All",
+          "ACTIVE": "Active",
+          "INACTIVE": "Inactive",
+          "BLOCKED": "Blocked"
+        }
+      },
+      "pagination": {
+        "summary": "Page {page} of {totalPages} ({total} users)",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "summary": {
+        "status": {
+          "ACTIVE": "Active",
+          "INACTIVE": "Inactive",
+          "BLOCKED": "Blocked"
+        },
+        "superAdmin": "Super administrator",
+        "authorizationVersion": "Authorization version {version}"
+      },
+      "roles": {
+        "title": "Assigned roles",
+        "manage": "Manage roles",
+        "empty": "No roles assigned",
+        "cancel": "Cancel",
+        "save": "Save changes"
+      },
+      "directPermissions": {
+        "title": "Direct permission overrides",
+        "manage": "Manage direct permissions",
+        "empty": "No direct permission overrides",
+        "superAdminNotice": "Direct permission overrides are not supported for super administrators.",
+        "searchLabel": "Search permissions",
+        "searchPlaceholder": "Search by code, name or module",
+        "cancel": "Cancel",
+        "save": "Save changes",
+        "effect": {
+          "ALLOW": "Allow",
+          "DENY": "Deny",
+          "NONE": "None"
+        }
+      },
+      "effectivePermissions": {
+        "title": "Effective permissions",
+        "description": "Permissions the user actually has, after combining roles and direct overrides",
+        "tableLabel": "Effective permissions",
+        "empty": "No effective permissions",
+        "noRoleSource": "No role source",
+        "effectiveYes": "Effective",
+        "effectiveNo": "Not effective",
+        "columns": {
+          "permission": "Permission",
+          "source": "Role source",
+          "directEffect": "Direct override",
+          "effective": "Effective"
+        },
+        "effect": {
+          "ALLOW": "Allow",
+          "DENY": "Deny",
+          "NONE": "None"
+        }
+      }
+    },
     "title": "Access control"
   },
   "AdminDashboard": {
@@ -236,7 +327,9 @@
     "INVALID_ACCESS_TOKEN": "The login session is invalid",
     "INVALID_CREDENTIALS": "Invalid email or password",
     "INVALID_REFRESH_TOKEN": "The login session has expired",
+    "INVALID_ROLES": "One or more roles do not exist or are inactive",
     "INVALID_SESSION": "Invalid login session",
+    "LAST_SUPER_ADMIN_CANNOT_BE_REMOVED": "The last active super administrator cannot be removed",
     "NETWORK_ERROR": "Unable to connect to the server",
     "PERMISSION_CODE_ALREADY_EXISTS": "Permission code already exists",
     "PERMISSION_IS_ASSIGNED": "This permission is assigned to one or more roles or users",
@@ -249,11 +342,15 @@
     "ROLE_CODE_ALREADY_EXISTS": "Role code already exists",
     "ROLE_IS_ASSIGNED_TO_USERS": "This role is assigned to one or more users",
     "ROLE_NOT_FOUND": "Role not found",
+    "SELF_ACCESS_CHANGE_FORBIDDEN": "You cannot change your own access",
+    "SUPER_ADMIN_ASSIGNMENT_FORBIDDEN": "Only a super administrator can assign the SUPER_ADMIN role",
+    "SUPER_ADMIN_DIRECT_PERMISSIONS_NOT_ALLOWED": "Direct permission overrides are not supported for super administrators",
     "SUPER_ADMIN_PERMISSIONS_CANNOT_BE_REPLACED": "SUPER_ADMIN permissions are managed automatically",
     "SYSTEM_PERMISSION_CANNOT_BE_DELETED": "System permissions cannot be deleted",
     "SYSTEM_PERMISSION_CANNOT_BE_MODIFIED": "System permissions cannot be modified",
     "SYSTEM_ROLE_CANNOT_BE_DEACTIVATED": "System roles cannot be deactivated",
     "SYSTEM_ROLE_CANNOT_BE_DELETED": "System roles cannot be deleted",
+    "DUPLICATE_USER_PERMISSIONS": "A permission can only be configured once per user",
     "INVALID_PERMISSIONS": "One or more permissions are invalid",
     "USER_NOT_FOUND": "The account no longer exists"
   }
